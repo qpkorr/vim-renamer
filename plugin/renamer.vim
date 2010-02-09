@@ -1,7 +1,7 @@
 " renamer.vim 
 " Maintainer:	John Orr (john undersc0re orr yah00 c0m)
-" Version:	    1.0
-" Last Change:	30 November 2006
+" Version:	    1.1
+" Last Change:	09 February 2010
 
 " Introduction: {{{1
 " Basic Usage:
@@ -62,11 +62,17 @@
 " - Rationalise the code so directories and files use the same arrays indexed
 "   by type of file.
 " - Refactor to make functions smaller
+" - 
 " - Make a suggestion!
 "
-" Changelog:
+" Changelog:   {{{1
 " 1.0 - initial functionality
-"
+" 1.1 - added options to
+"       a) support :w as substitute for :Ren, and
+"       b) ignore wildignore settings when reading in files
+"     - fixed highlighting after file deletion
+"     - various other minor changes, eg naming the buffer.
+
 " Implementation Notes:
 
 " Reload guard and 'compatible' handling {{{1
@@ -81,35 +87,6 @@ if v:version < 700
   finish
 endif
 let loaded_renamer = 1
-
-"   " Arguments: First argument is always a level value
-"   " If two argument, second is a simple text string, or a variable.
-"   " If three arguments, the second is the function name, and the third a text
-"   " string or variable name
-"     return
-"   endif
-" 
-"   let s = '(win=' . winnr() . '):'
-"   let i = 1
-"   if a:0 > 1
-"     let s = s . a:1 . ': '
-"     let i = i + 1
-"   endif
-"   
-"   while i <= a:0
-"     exec "let arg = a:" . i
-"     if exists(arg)
-"       exec 'let s = s . arg . " = (" . ' . arg . ' . ")"'
-"     else
-"       let s = s . "'" . arg . "'"
-"     endif
-"     if i < a:0
-"       let s = s . ', '
-"     endif
-"     let i += 1
-"   endwhile
-"   autocmd! CursorHold * echom '---------'
-" endfunction
 
 " User configurable variables {{{1
 " The following variables can be set in your .vimrc/_vimrc file to override
@@ -127,6 +104,16 @@ endif
 " Controls whether the resolved targets of any links will be shown as comments
 if !exists('g:RenamerShowLinkTargets')
   let g:RenamerShowLinkTargets = 1
+endif
+
+" g:RenamerWildIgnoreSetting {{{2
+if !exists('g:RenamerWildIgnoreSetting')
+  let g:RenamerWildIgnoreSetting = 'VIM_WILDIGNORE_SETTING'
+endif
+
+" g:RenamerSupportColonWToRename {{{2
+if !exists('g:RenamerSupportColonWToRename')
+  let g:RenamerSupportColonWToRename = 0 
 endif
 
 " Highlight links
@@ -169,7 +156,7 @@ endif
 " Commands {{{1
 " To run the script
 if !exists(':Renamer')
-  command -bang -nargs=? -complete=dir Renamer :call <SID>StartRenamer(1,'<args>')
+  command -bang -nargs=? -complete=dir Renamer :call <SID>StartRenamer(1,-1,'<args>')
 endif
 
 
@@ -179,7 +166,7 @@ endif
 " specific to the buffer.  Change them in the code if you want.
 "
 " A template to defined a mapping to start this plugin is:
-" noremap <Plug>RenamerStart     :call <SID>StartRenamer(1,getcwd())<CR>
+" noremap <Plug>RenamerStart     :call <SID>StartRenamer(1,-1,getcwd())<CR>
 " if !hasmapto('<Plug>RenamerStart')
 "   nmap <silent> <unique> <Leader>ren <Plug>RenamerStart
 " endif
@@ -198,7 +185,7 @@ let s:headerLineCount = len(s:header) + 2 " + 2 because of extra lines added lat
 
 " Main Functions
 
-function! <SID>StartRenamer(needNewWindow, ...) "{{{1
+function! <SID>StartRenamer(needNewWindow, startLine, ...) "{{{1
 " The main function that starts the app
 
   " Prevent a report of our actions from showing up
@@ -242,6 +229,13 @@ function! <SID>StartRenamer(needNewWindow, ...) "{{{1
   set title
 
   " Get a list of all the files
+  " Since glob follows 'wildignore' settings and this may well be undesirable,
+  " we may ignore such directives
+  if g:RenamerWildIgnoreSetting != 'VIM_WILDIGNORE_SETTING'
+    let savedWildignoreSetting = &wildignore
+    let &wildignore = g:RenamerWildIgnoreSetting
+  endif
+
   " Unix and Windows need different things due to differences in possible filenames
   if has('unix')
     let pathfiles = s:Path(glob(b:renamerDirectoryEscaped . "/*"))
@@ -251,6 +245,12 @@ function! <SID>StartRenamer(needNewWindow, ...) "{{{1
   if pathfiles != "" && pathfiles !~ "\n$"
     let pathfiles .= "\n"
   endif
+
+  " Restore Wildignore settings
+  if g:RenamerWildIgnoreSetting != 'VIM_WILDIGNORE_SETTING'
+    let &wildignore = savedWildignoreSetting
+  endif
+
 
   " Remove the directory from the filenames
   let filenames = substitute(pathfiles, b:renamerDirectoryEscaped . '/', '', 'g')
@@ -378,9 +378,12 @@ function! <SID>StartRenamer(needNewWindow, ...) "{{{1
   setlocal buftype=nofile
   setlocal noswapfile
 
+  " Set the buffer name
+  exec "file VimRenamer " . b:renamerDirectoryEscaped
+
   " Setup syntax
   if has("syntax")
-    syn clear
+    syntax on
     exec "syn match RenamerSecondaryInstructions '^\s*".s:hashes.".*'"
     exec "syn match RenamerPrimaryInstructions   '^\s*".s:hashes."Renamer.*'"
     exec "syn match RenamerLinkInfo '".s:linkPrefix.".*'"
@@ -443,14 +446,25 @@ function! <SID>StartRenamer(needNewWindow, ...) "{{{1
 
   " Define command to do the rename
   exec 'command! -buffer -bang -nargs=0 Ren :call <SNR>'.s:sid.'_PerformRename()'
+
+  if g:RenamerSupportColonWToRename
+    " Enable :w<cr> to work as well
+    nmap <buffer> :w<cr> :Ren<cr>
+  endif
+
   " Define the mapping to change directories
   exec 'nnoremap <buffer> <silent> <CR> :call <SNR>'.s:sid.'_ChangeDirectory()<CR>'
   exec 'nnoremap <buffer> <silent> <C-Del> :call <SNR>'.s:sid.'_DeleteEntry()<CR>'
   exec 'nnoremap <buffer> <silent> T :call <SNR>'.s:sid.'_ToggleOriginalFilesWindow()<CR>'
   exec 'nnoremap <buffer> <silent> <F5> :call <SNR>'.s:sid.'_Refresh()<CR>'
 
-  " Position the cursor on the parent directory line
-  call cursor(s:headerLineCount,1)
+  " Position the cursor
+  if a:startLine > 0
+    call cursor(a:startLine, 1)
+  else
+    " Position the cursor on the parent directory line
+    call cursor(s:headerLineCount,1)
+  endif
 
   " If the user wants the window with with original files, create it
   if g:RenamerOriginalFileWindowEnabled
@@ -649,7 +663,7 @@ function! <SID>PerformRename() "{{{1
   let &report=oldRep
   let &sc = save_sc
 
-  exec 'call <SNR>'.s:sid.'_StartRenamer(0,b:renamerDirectory)'
+  exec 'call <SNR>'.s:sid.'_StartRenamer(0,-1,b:renamerDirectory)'
 
 endfunction
 
@@ -672,7 +686,7 @@ function! <SID>ChangeDirectory() "{{{1
     exec 'cd '.b:renamerDirectory
 
     " Now update the display for the new directory
-    exec 'call <SNR>'.s:sid.'_StartRenamer(0,b:renamerDirectory)'
+    exec 'call <SNR>'.s:sid.'_StartRenamer(0,-1,b:renamerDirectory)'
   endif
 endfunction
 
@@ -753,18 +767,9 @@ function! <SID>DeleteEntry() "{{{1
       endif
     endif
 
-    " Delete seems successful, remove it from list of original files and the screen
-    exec 'call remove('.listName.', listIndex)'
-    exec lineNum.'d'
+    " Restart renamer to reset everything
+    exec 'call <SNR>'.s:sid.'_StartRenamer(0,lineNum,b:renamerDirectory)'
 
-    " Remove from original files window if appropriate
-    if g:RenamerOriginalFileWindowEnabled
-      wincmd h
-      setlocal modifiable
-      exec lineNum.'d'
-      setlocal nomodifiable
-      wincmd l
-    endif
   endif
 
 endfunction
@@ -779,13 +784,11 @@ function! <SID>ToggleOriginalFilesWindow() "{{{1
     bdelete
     let g:RenamerOriginalFileWindowEnabled = 0
   endif
-  " exec 'call <SNR>'.s:sid.'_StartRenamer(0,b:renamerDirectory)'
-  
 endfunction
 
 function! <SID>Refresh() "{{{1
   " Update the display in case directory contents have changed outside vim
-  exec 'call <SNR>'.s:sid.'_StartRenamer(0,b:renamerDirectory)'
+  exec 'call <SNR>'.s:sid.'_StartRenamer(0,-1,b:renamerDirectory)'
 endfunction
 
 " Support functions        {{{1
@@ -859,6 +862,7 @@ endfunction
 "
 " None at present
 " augroup Renamer
+" augroup END
 
 " Cleanup and modelines {{{1
 let &cpo = s:save_cpo
