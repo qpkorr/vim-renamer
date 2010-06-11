@@ -1,7 +1,7 @@
 " renamer.vim 
 " Maintainer:	John Orr (john undersc0re orr yah00 c0m)
-" Version:	    1.1
-" Last Change:	09 February 2010
+" Version:	    1.2
+" Last Change:	11 June 2010
 
 " Introduction: {{{1
 " Basic Usage:
@@ -72,6 +72,9 @@
 "       b) ignore wildignore settings when reading in files
 "     - fixed highlighting after file deletion
 "     - various other minor changes, eg naming the buffer.
+" 1.2 - fix filename handling for linux - thanks Antonio Monizio
+"     - improve :w support to avoid delay showing command line - thanks Sergey Bochenkov
+"     - other minor improvements
 
 " Implementation Notes:
 
@@ -199,11 +202,11 @@ function! <SID>StartRenamer(needNewWindow, startLine, ...) "{{{1
     if bufname('') != '' || &mod
         new
     else
-        normal 1GVGd
+        normal! 1GVGd
     endif
   else
     " b) deleting the existing window content if renamer is already running
-    normal 1GVGd
+    normal! 1GVGd
   endif
 
   if g:RenamerOriginalFileWindowEnabled
@@ -372,14 +375,16 @@ function! <SID>StartRenamer(needNewWindow, startLine, ...) "{{{1
     put =b:renamerEntryDisplayText
   endif
   " Remove a blank line created by 'put'
-  normal ggdd
+  normal! ggdd
 
   " Set the buffer type
   setlocal buftype=nofile
   setlocal noswapfile
 
-  " Set the buffer name
-  exec "file VimRenamer " . b:renamerDirectoryEscaped
+  " Set the buffer name if not already set
+  if bufname('%') != 'VimRenamer'
+    exec 'file VimRenamer "' . b:renamerDirectoryEscaped . '"'
+  endif
 
   " Setup syntax
   if has("syntax")
@@ -449,8 +454,15 @@ function! <SID>StartRenamer(needNewWindow, startLine, ...) "{{{1
 
   if g:RenamerSupportColonWToRename
     " Enable :w<cr> to work as well
-    nmap <buffer> :w<cr> :Ren<cr>
-  endif
+    cnoremap <buffer> <CR> <C-\>e<SID>CheckUserCommand()<CR><CR>
+    function! <SID>CheckUserCommand()
+      let cmd = getcmdline()
+      if cmd == 'w'
+        let cmd = 'Ren'
+      endif
+      return cmd
+    endfunc
+  endif 
 
   " Define the mapping to change directories
   exec 'nnoremap <buffer> <silent> <CR> :call <SNR>'.s:sid.'_ChangeDirectory()<CR>'
@@ -563,7 +575,7 @@ function! <SID>PerformRename() "{{{1
 
   " Get the current lines, except the first
   let saved_z = @z
-  normal 1GVG"zy
+  normal! 1GVG"zy
   let bufferText = @z
   let @z = saved_z
 
@@ -672,7 +684,7 @@ function! <SID>ChangeDirectory() "{{{1
   let line = substitute(line, ' *'.s:hashes.'.*', '', '')
   if line !~ '\/$'
     " Not a directory, ignore
-    normal j0
+    normal! j0
   else
     if line =~ '^#'
       let b:renamerDirectory = simplify(b:renamerDirectory.'/'.substitute(line, '^#\{1,} *', '', ''))
@@ -683,7 +695,7 @@ function! <SID>ChangeDirectory() "{{{1
     " We must also change the current directory, else it can happen 
     " that we are trying to rename the directory we're currently in,
     " which is never going to work
-    exec 'cd '.b:renamerDirectory
+    exec 'cd "'.b:renamerDirectory . '"'
 
     " Now update the display for the new directory
     exec 'call <SNR>'.s:sid.'_StartRenamer(0,-1,b:renamerDirectory)'
