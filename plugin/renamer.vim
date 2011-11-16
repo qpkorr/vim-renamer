@@ -1,7 +1,7 @@
 " renamer.vim
 " Maintainer:   John Orr (john undersc0re orr yah00 c0m)
-" Version:      1.3
-" Last Change:  13 November 2011
+" Version:      1.4
+" Last Change:  16 November 2011
 
 " Introduction: {{{1
 " Basic Usage:
@@ -79,6 +79,8 @@
 "       (Particularly important for large files on slow-access media, as
 "       they were being copied to and from local media.)
 "       Thanks to Adam Courtemanche for finding and fixing the bug!
+" 1.4 - fix permitted filenames problem on Mac OS - thanks Adam Courtemanche.
+"     - fix bug when launching from within an existing buffer.
 
 " Implementation Notes:
 
@@ -189,7 +191,6 @@ let s:header = [
   \ "Do not change the number of files listed (unless deleting)\n"
   \ ]
 let s:headerLineCount = len(s:header) + 2 " + 2 because of extra lines added later
-let b:renamerSavedDirectoryLocations = {}
 
 if has('dos16')||has('dos32')||has('win16')||has('win32')||has('win64')||has('win32unix')||has('win95')
   " With info from http://support.grouplogic.com/?p=1607 and
@@ -201,15 +202,7 @@ if has('dos16')||has('dos32')||has('win16')||has('win32')||has('win64')||has('wi
   let s:filePathIllegalPatterns =  '\v(.{261})'
   let s:filePathIllegalPatternsGuide = [ 'more than 260 characters']
 
-elseif has('mac')
-  let s:validChars = '[^:]'
-  let s:separator = '[/]'
-  let s:fileIllegalPatterns =  '\v(.{32})'
-  let s:fileIllegalPatternsGuide = ['more then 31 characters']
-  let s:filePathIllegalPatterns =  'There are no illegal filepath patterns for OS 9 on macs:'
-  let s:filePathIllegalPatternsGuide = []
-
-elseif has('macunix')
+elseif has('macunix') " May well have 'mac' as well, but this one is more permissive
   let s:validChars = '[^:]'
   let s:separator = '[/]'
   let s:fileIllegalPatterns =  '\v(^\.)|(.{256})'
@@ -223,6 +216,14 @@ elseif has('unix')
   let s:fileIllegalPatterns =  '\v(.{256})'
   let s:fileIllegalPatternsGuide = [ 'more than 255 characters']
   let s:filePathIllegalPatterns =  'There are no illegal filepath patterns on unix'
+  let s:filePathIllegalPatternsGuide = []
+
+elseif has('mac')
+  let s:validChars = '[^:]'
+  let s:separator = '[/]'
+  let s:fileIllegalPatterns =  '\v(.{32})'
+  let s:fileIllegalPatternsGuide = ['more then 31 characters']
+  let s:filePathIllegalPatterns =  'There are no illegal filepath patterns for OS 9 on macs:'
   let s:filePathIllegalPatternsGuide = []
 
 else
@@ -254,6 +255,7 @@ function! <SID>StartRenamer(needNewWindow, startLine, ...) "{{{1
     else
         normal! 1GVGd
     endif
+    let b:renamerSavedDirectoryLocations = {}
   else
     " b) deleting the existing window content if renamer is already running
     normal! 1GVGd
