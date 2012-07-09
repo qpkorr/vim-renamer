@@ -851,4 +851,4 @@ endfunction
 " Cleanup and modelines {{{1
 let &cpo = s:save_cpo
 
-" vim:ft=vim:ts=2:sw=2:fdm=indent:fen:fmr={{{,}}}:
+" vim:ft=vim:ts=2:sw=2:fdm=marker:fen:fmr={{{,}}}:
