@@ -99,14 +99,10 @@ endif
 
 " Keyboard mappings {{{1
 "
-" All mappings are defined only when the script starts, and are
-" specific to the buffer.  Change them in the code if you want.
+" Mappings are defined only when the script starts, and are specific to the
+" buffer.  Change them in the code if you want.
 "
-" A template to defined a mapping to start this plugin is:
-" noremap <Plug>RenamerStart     :call StartRenamer(1,-1,getcwd())<CR>
-" if !hasmapto('<Plug>RenamerStart')
-"   nmap <silent> <unique> <Leader>ren <Plug>RenamerStart
-" endif
+noremap <Plug>RenamerStart     :call StartRenamer(1,-1,getcwd())<CR>
 
 
 function StartRenamer(needNewWindow, startLine, ...) "{{{1
