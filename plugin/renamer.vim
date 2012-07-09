@@ -239,7 +239,17 @@ endif
 
 " Main Functions
 
+" Launch Renamer
+" Optional arg is the directory to start Renamer in.
 function! StartRenamer(needNewWindow, startLine, ...) "{{{1
+    let startDirectory = ''
+    if a:0 > 0
+        let startDirectory = a:1
+    endif
+  call Start(a:needNewWindow, a:startLine, startDirectory)
+endfunction
+
+function! Start(needNewWindow, startLine, startDirectory) "{{{1
   " The main function that starts the app
 
   " Prevent a report of our actions from showing up
@@ -270,8 +280,8 @@ function! StartRenamer(needNewWindow, startLine, ...) "{{{1
 
   " Process optional parameters to this function and
   " set the directory to process
-  if a:1 != ''
-    let b:renamerDirectory = s:Path(a:1)
+  if a:startDirectory != ''
+    let b:renamerDirectory = s:Path(a:startDirectory)
   elseif !exists('b:renamerDirectory')
     let b:renamerDirectory = s:Path(getcwd())
   endif
@@ -517,7 +527,7 @@ function! StartRenamer(needNewWindow, startLine, ...) "{{{1
         let cmd = 'Ren'
       endif
       return cmd
-    endfunc
+    endfunction
   endif
 
   " Define the mapping to change directories
