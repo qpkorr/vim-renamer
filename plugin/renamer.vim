@@ -186,10 +186,10 @@ let s:hashes = '### '
 let s:linksTo = 'LinksTo: '
 let s:linkPrefix = ' '.s:hashes.s:linksTo
 let s:header = [
-  \ "Renamer: change names then give command :Ren\n" ,
-  \ "ENTER=chdir, T=toggle original files, F5=refresh, Ctrl-Del=delete\n" ,
-  \ "Do not change the number of files listed (unless deleting)\n"
-  \ ]
+      \ "Renamer: change names then give command :Ren\n" ,
+      \ "ENTER=chdir, T=toggle original files, F5=refresh, Ctrl-Del=delete\n" ,
+      \ "Do not change the number of files listed (unless deleting)\n"
+      \ ]
 let s:headerLineCount = len(s:header) + 2 " + 2 because of extra lines added later
 
 if has('dos16')||has('dos32')||has('win16')||has('win32')||has('win64')||has('win32unix')||has('win95')
@@ -240,7 +240,7 @@ endif
 " Main Functions
 
 function! <SID>StartRenamer(needNewWindow, startLine, ...) "{{{1
-" The main function that starts the app
+  " The main function that starts the app
 
   " Prevent a report of our actions from showing up
   let oldRep=&report
@@ -251,9 +251,9 @@ function! <SID>StartRenamer(needNewWindow, startLine, ...) "{{{1
   if a:needNewWindow && !exists('b:renamerDirectory')
     " a) creating a window if non exists, or
     if bufname('') != '' || &mod
-        new
+      new
     else
-        normal! 1GVGd
+      normal! 1GVGd
     endif
     let b:renamerSavedDirectoryLocations = {}
   else
@@ -546,7 +546,6 @@ function! <SID>StartRenamer(needNewWindow, startLine, ...) "{{{1
 endfunction
 
 function! <SID>CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayText) "{{{1
-
   let currentLine = line('.')
   call cursor(1,1)
 
@@ -557,10 +556,10 @@ function! <SID>CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayTex
 
     " Set the header text
     let headerText = [ s:hashes.'ORIGINAL' ,
-                     \ s:hashes.' FILES' ,
-                     \ s:hashes.'  DO' ,
-                     \ s:hashes.' NOT' ,
-                     \ s:hashes.'MODIFY!' ]
+          \ s:hashes.' FILES' ,
+          \ s:hashes.'  DO' ,
+          \ s:hashes.' NOT' ,
+          \ s:hashes.'MODIFY!' ]
     let i = 0
     while i < s:headerLineCount
       if i < len(headerText)
@@ -618,11 +617,10 @@ function! <SID>CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayTex
 
   " Reset g:RenamerOriginalFileWindowEnabled to 1 in case it was 2 to create a new window
   let g:RenamerOriginalFileWindowEnabled = 1
-
 endfunction
 
 function! <SID>PerformRename() "{{{1
-" The function to do the renaming
+  " The function to do the renaming
 
   " Prevent a report of our actions from showing up
   let oldRep=&report
@@ -712,8 +710,8 @@ function! <SID>PerformRename() "{{{1
           call mkdir(newDir, 'p')
         endif
         if !isdirectory(newDir)
-            echoe "Attempting to rename '".b:renamerOriginalPathfileList[i]."' to '".newName."' but directory ".newDir." couldn't be created!"
-            " Continue anyway with the other files since we've already started renaming
+          echoe "Attempting to rename '".b:renamerOriginalPathfileList[i]."' to '".newName."' but directory ".newDir." couldn't be created!"
+          " Continue anyway with the other files since we've already started renaming
         else
           " To allow moving files to other directories, slashes must be "escaped" in a special way
           let newName = substitute(newName, '\/', '_FORWSLASH_', 'g')
@@ -753,7 +751,6 @@ function! <SID>PerformRename() "{{{1
   let &sc = save_sc
 
   exec 'call <SNR>'.s:sid.'_StartRenamer(0,-1,b:renamerDirectory)'
-
 endfunction
 
 function! <SID>ChangeDirectory() "{{{1
@@ -881,7 +878,6 @@ function! <SID>DeleteEntry() "{{{1
     exec 'call <SNR>'.s:sid.'_StartRenamer(0,lineNum,b:renamerDirectory)'
 
   endif
-
 endfunction
 
 function! <SID>ToggleOriginalFilesWindow() "{{{1
@@ -904,7 +900,7 @@ endfunction
 " Support functions        {{{1
 
 function! s:Path(p)       "{{{2
-" Make sure a path has proper form
+  " Make sure a path has proper form
   if has("dos16") || has("dos32") || has("win16") || has("win32") || has("os2")
     let returnPath=substitute(a:p,'\\','/','g')
   else
@@ -1039,4 +1035,4 @@ endfunction
 " Cleanup and modelines {{{1
 let &cpo = s:save_cpo
 
-" vim:ft=vim:fdm=marker:fen:fmr={{{,}}}:
+" vim:ft=vim:ts=2:sw=2:fdm=indent:fen:fmr={{{,}}}:
