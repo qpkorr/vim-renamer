@@ -241,7 +241,7 @@ endif
 
 " Launch Renamer
 " Optional arg is the directory to start Renamer in.
-function! StartRenamer(needNewWindow, startLine, ...) "{{{1
+function StartRenamer(needNewWindow, startLine, ...) "{{{1
     let startDirectory = ''
     if a:0 > 0
         let startDirectory = a:1
@@ -249,7 +249,7 @@ function! StartRenamer(needNewWindow, startLine, ...) "{{{1
   call Start(a:needNewWindow, a:startLine, startDirectory)
 endfunction
 
-function! Start(needNewWindow, startLine, startDirectory) "{{{1
+function Start(needNewWindow, startLine, startDirectory) "{{{1
   " The main function that starts the app
 
   " Prevent a report of our actions from showing up
@@ -555,7 +555,7 @@ function! Start(needNewWindow, startLine, startDirectory) "{{{1
 
 endfunction
 
-function! CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayText) "{{{1
+function CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayText) "{{{1
   let currentLine = line('.')
   call cursor(1,1)
 
@@ -629,7 +629,7 @@ function! CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayText) "{
   let g:RenamerOriginalFileWindowEnabled = 1
 endfunction
 
-function! PerformRename() "{{{1
+function PerformRename() "{{{1
   " The function to do the renaming
 
   " Prevent a report of our actions from showing up
@@ -763,7 +763,7 @@ function! PerformRename() "{{{1
   call StartRenamer(0,-1,b:renamerDirectory)
 endfunction
 
-function! ChangeDirectory() "{{{1
+function ChangeDirectory() "{{{1
   let line = getline('.')
   exec "let isLinkedDir = line =~ '" . s:linksTo . ".*\/$'"
   if isLinkedDir
@@ -807,7 +807,7 @@ function! ChangeDirectory() "{{{1
   call StartRenamer(0,lineForNewBuffer,b:renamerDirectory)
 endfunction
 
-function! DeleteEntry() "{{{1
+function DeleteEntry() "{{{1
   let lineNum = line('.')
   let entry = getline(lineNum)
   " Remove leading comment chars
@@ -890,7 +890,7 @@ function! DeleteEntry() "{{{1
   endif
 endfunction
 
-function! ToggleOriginalFilesWindow() "{{{1
+function ToggleOriginalFilesWindow() "{{{1
   " Toggle the original files window
   if g:RenamerOriginalFileWindowEnabled == 0
     let g:RenamerOriginalFileWindowEnabled = 2 " 2 => create the window as well
@@ -902,14 +902,14 @@ function! ToggleOriginalFilesWindow() "{{{1
   endif
 endfunction
 
-function! Refresh() "{{{1
+function Refresh() "{{{1
   " Update the display in case directory contents have changed outside vim
   call StartRenamer(0,-1,b:renamerDirectory)
 endfunction
 
 " Support functions        {{{1
 
-function! s:Path(p)       "{{{2
+function s:Path(p)       "{{{2
   " Make sure a path has proper form
   if has("dos16") || has("dos32") || has("win16") || has("win32") || has("os2")
     let returnPath=substitute(a:p,'\\','/','g')
@@ -922,7 +922,7 @@ function! s:Path(p)       "{{{2
   return returnPath
 endfunction
 
-function! s:GetHighlightString(group) "{{{2
+function s:GetHighlightString(group) "{{{2
   " Given a named highlight group, return the string representing the settings for it
   if !hlexists(a:group)
     echoe "Error in GetHighlightString: no highlight group exists called " . a:group
@@ -950,7 +950,7 @@ function! s:GetHighlightString(group) "{{{2
   return result
 endfunction
 
-function! s:AddBoldToHighlightGroupDefinition(string) "{{{2
+function s:AddBoldToHighlightGroupDefinition(string) "{{{2
   " Function to add the keyword "bold" where appropriate to a highlight definition string
   let string = a:string
   let string .= ' gui=bold'
@@ -968,7 +968,7 @@ function! s:AddBoldToHighlightGroupDefinition(string) "{{{2
 endfunction
 
 
-function! s:ValidatePathfile(dir, line, lineNo) "{{{2
+function s:ValidatePathfile(dir, line, lineNo) "{{{2
   " Validate characters provided
   " In theory we could/should match against \f, which is controlled by the
   " option 'isfname' - but in reality - it's not an option.  For example,
@@ -1008,7 +1008,7 @@ function! s:ValidatePathfile(dir, line, lineNo) "{{{2
   return 0
 endfunction
 
-function! s:IsValidPattern(string, patterns, correspondingMsgs, lineNo) "{{{1
+function s:IsValidPattern(string, patterns, correspondingMsgs, lineNo) "{{{1
   " Given a regex with multiple OR'd sub-patterns, check which ones match a string,
   " and print the corresponding messages for each match
   " patterns should be of the form '\v(A)|(B)|(C)....'
