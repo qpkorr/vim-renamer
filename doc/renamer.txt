@@ -1,8 +1,8 @@
-*renamer.txt*  Mangle filenames like text
+*renamer.txt*	Mangle filenames like text
 
 INTRODUCTION                                                  *renamer* {{{1
 Show a list of file names in a directory, rename then in the vim buffer
-using vim editing commands, then have vim rename them on disk
+using vim editing commands, then have vim rename them on disk.
 
 DESCRIPTION                                       *renamer-description* {{{1
 Renaming a single file is easily done via an operating system file explorer,
@@ -16,8 +16,21 @@ can be given, and new directories will be created, with 755 permissions,
 as required.
 
 USAGE                                                   *renamer-usage* {{{1
-Use the Renamer command invoke the functionality and set the User
-Configurable Variables defined in plugin/renamer.vim as desired.
+:Renamer {dir}                                          *:Renamer*
+            Start renaming in {dir} (defaults to the |pwd|). Opens a new
+            VimRenamer window.
+
+The VimRenamer window contains a directory listing. You can modify
+filenames and remove files.
+
+:Ren or :w (see g:RenamerSupportColonWToRename) will apply your changes.
+
+Set the user configurable variables defined in plugin/renamer.vim as desired.
+
+To start renaming in the current directory, you can define a map to
+<Plug>RenamerStart: >
+    nmap <Leader>r <Plug>RenamerStart
+<
 
 INSTALL DETAILS                                       *renamer-install* {{{1
 The usual pathogen setup - add renamer directory to $HOME/.vim/bundle
@@ -56,7 +69,7 @@ POSSIBLE IMPROVEMENTS                            *renamer-improvements* {{{1
 - Rationalise the code so directories and files use the same arrays indexed
   by type of file.
 - Refactor to make functions smaller
-- Add installation instructions for Windows 7?  Or better still, updgrade
+- Add installation instructions for Windows 7?  Or better still, upgrade
   my Windows 7 box to XP :)
 - Make a suggestion!
 
