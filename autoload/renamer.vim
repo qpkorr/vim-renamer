@@ -394,6 +394,11 @@ function renamer#CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayT
     " Create a new window to the left
     lefta vnew
     setlocal modifiable
+    setlocal nonumber
+    if exists('+relativenumber')
+      setlocal norelativenumber
+    endif
+    setlocal foldcolumn=0
 
     " Set the header text
     let headerText = [ s:hashes.'ORIGINAL' ,
