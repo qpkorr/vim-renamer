@@ -660,7 +660,7 @@ function renamer#ChangeDirectory() "{{{1
   " We must also change the current directory, else it can happen
   " that we are trying to rename the directory we're currently in,
   " which is never going to work
-  exec 'cd "'.b:renamerDirectory . '"'
+  exec 'cd' fnameescape(b:renamerDirectory)
 
   " Now update the display for the new directory
   call renamer#Start(0,lineForNewBuffer,b:renamerDirectory)
