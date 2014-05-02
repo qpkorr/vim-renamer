@@ -331,21 +331,14 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
       let i += 1
     endwhile
 
-    " Link the highlights to user-setable colours
-    exec "highlight link RenamerPrimaryInstructions " . g:RenamerHighlightForPrimaryInstructions
-    exec "highlight link RenamerSecondaryInstructions " . g:RenamerHighlightForSecondaryInstructions
-    exec "highlight link RenamerLinkInfo " . g:RenamerHighlightForLinkInfo
-    exec "highlight link RenamerModifiedFilename " . g:RenamerHighlightForModifiedFilename
-    exec "highlight link RenamerOriginalFilename " . g:RenamerHighlightForOriginalFilename
-    exec "highlight link RenamerNonwriteableEntries " . g:RenamerHighlightForNonWriteableEntries
-    " Make directories a bold version of files if set to 'bold'
-    if g:RenamerHighlightForOriginalDirectoryName == 'bold'
-      let originalFilenameHighlightString = renamer#GetHighlightString(g:RenamerHighlightForOriginalFilename)
-      let originalDirectoryNameHighlightString = renamer#AddBoldToHighlightGroupDefinition(originalFilenameHighlightString)
-      exec "highlight RenamerOriginalDirectoryName " . originalDirectoryNameHighlightString
-    else
-      exec "highlight link RenamerOriginalDirectoryName " . g:RenamerHighlightForOriginalDirectoryName
-    endif
+    " Presets for the highlights
+    highlight def link RenamerPrimaryInstructions Title
+    highlight def link RenamerSecondaryInstructions Comment
+    highlight def link RenamerLinkInfo PreProc
+    highlight def link RenamerModifiedFilename Statement
+    highlight def link RenamerOriginalFilename Normal
+    highlight def link RenamerNonwriteableEntries NonText
+    highlight def link RenamerOriginalDirectoryName Directory
   endif
 
   " Define command to do the rename
@@ -802,52 +795,6 @@ function renamer#Path(p)       "{{{2
   let returnPath=substitute(returnPath, '//\+', '/', 'g')
   return returnPath
 endfunction
-
-function renamer#GetHighlightString(group) "{{{2
-  " Given a named highlight group, return the string representing the settings for it
-  if !hlexists(a:group)
-    echoe "Error in GetHighlightString: no highlight group exists called " . a:group
-    return ''
-  endif
-
-  let hlid = hlID(a:group)
-  let synid = synIDtrans(hlid)
-  let result = ''
-  for mode in ['term', 'cterm', 'gui']
-    for what in ['fg', 'bg']
-      let attr = synIDattr(synid, what, mode)
-      if attr != '' && attr != -1
-        let result .= ' ' . mode . what . '=' . attr
-      endif
-    endfor
-    for what in ['bold', 'italic', 'reverse', 'inverse', 'underline', 'undercurl']
-      let attr = synIDattr(synid, what, mode)
-      if attr == 1
-        " Don't bother supporting multiple options, like term=bold,underline
-        let result .= ' ' . mode . '=' . what
-      endif
-    endfor
-  endfor
-  return result
-endfunction
-
-function renamer#AddBoldToHighlightGroupDefinition(string) "{{{2
-  " Function to add the keyword "bold" where appropriate to a highlight definition string
-  let string = a:string
-  let string .= ' gui=bold'
-  if string =~ '\<term=' && string !~ '\<term=bold'
-    let string = substitute(string, '\<term=', 'term=bold,', '')
-  else
-    let string .= ' term=bold'
-  endif
-  if string =~ '\<cterm=' && string !~ '\<cterm=bold'
-    let string = substitute(string, '\<cterm=', 'cterm=bold,', '')
-  else
-    let string .= ' cterm=bold'
-  endif
-  return string
-endfunction
-
 
 function renamer#ValidatePathfile(dir, line, lineNo) "{{{2
   " Validate characters provided

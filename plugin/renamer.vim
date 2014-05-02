@@ -58,41 +58,6 @@ if !exists('g:RenamerSupportColonWToRename')
   let g:RenamerSupportColonWToRename = 0
 endif
 
-" Highlight links
-" g:RenamerHighlightForPrimaryInstructions {{{2
-if !exists('g:RenamerHighlightForPrimaryInstructions')
-  let g:RenamerHighlightForPrimaryInstructions = 'Todo'
-endif
-
-" g:RenamerHighlightForSecondaryInstructions {{{2
-if !exists('g:RenamerHighlightForSecondaryInstructions')
-  let g:RenamerHighlightForSecondaryInstructions = 'comment'
-endif
-
-" g:RenamerHighlightForLinkInfo {{{2
-if !exists('g:RenamerHighlightForLinkInfo')
-  let g:RenamerHighlightForLinkInfo = 'comment'
-endif
-
-" g:RenamerHighlightForModifiedFilename {{{2
-if !exists('g:RenamerHighlightForModifiedFilename')
-  let g:RenamerHighlightForModifiedFilename = 'Constant'
-endif
-
-" g:RenamerHighlightForOriginalFilename {{{2
-if !exists('g:RenamerHighlightForOriginalFilename')
-  let g:RenamerHighlightForOriginalFilename = 'Keyword'
-endif
-
-" g:RenamerHighlightForNonWriteableEntries {{{2
-if !exists('g:RenamerHighlightForNonWriteableEntries')
-  let g:RenamerHighlightForNonWriteableEntries = 'NonText'
-endif
-
-" g:RenamerHighlightForOriginalDirectoryName {{{2
-if !exists('g:RenamerHighlightForOriginalDirectoryName')
-  let g:RenamerHighlightForOriginalDirectoryName = 'bold'
-endif
 
 
 
