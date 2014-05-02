@@ -84,13 +84,13 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
     if bufname('') != '' || &mod
       new
     else
-      %delete _
+      silent %delete _
     endif
     let b:renamerSavedDirectoryLocations = {}
     let b:renamerPathDepth = g:RenamerInitialPathDepth
   else
     " b) deleting the existing window content if renamer is already running
-    %delete _
+    silent %delete _
   endif
 
   if g:RenamerOriginalFileWindowEnabled
@@ -349,7 +349,8 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   endif
 
   " Define command to do the rename
-  command! -buffer -bang -bar -nargs=0 Ren :call renamer#PerformRename()
+  command! -buffer -bang -bar -nargs=0 Ren     call renamer#PerformRename(0)
+  command! -buffer -bang -nargs=0      RenTest call renamer#PerformRename(1)
 
   if g:RenamerSupportColonWToRename
     " Enable :w<cr> and :wq<cr> to work as well
@@ -466,7 +467,7 @@ function renamer#CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayT
   let g:RenamerOriginalFileWindowEnabled = 1
 endfunction
 
-function renamer#PerformRename() "{{{1
+function renamer#PerformRename(isTest) "{{{1
   " The function to do the renaming
 
   " Prevent a report of our actions from showing up
@@ -477,125 +478,148 @@ function renamer#PerformRename() "{{{1
   " Save the current line number, to return to it after renaming
   let savedLineNumber = line('.')
 
-  " Get the current lines
-  let splitBufferText = getline(1, '$')
-  let modifiedFileList = []
-  let lineNo = 0
-  let invalidFileCount = 0
-  for line in splitBufferText
-    let lineNo += 1
-    if line !~ '^#'
-      let line = substitute(line, s:linkPrefix.'.*','','')
-      let line = substitute(line, '\/$','','')
-      let invalidFileCount += renamer#ValidatePathfile(b:renamerDirectory, line, lineNo)
-      let modifiedFileList += [ b:renamerDirectory . '/' . line ]
-    endif
-  endfor
-
-  if invalidFileCount
-    call s:EchoErr(invalidFileCount." name(s) had errors. Resolve and retry...")
-    return
-  endif
-
-  let numOriginalFiles = len(b:renamerOriginalPathfileList)
-  let numModifiedFiles = len(modifiedFileList)
-
-  if numModifiedFiles != numOriginalFiles
-    call s:EchoErr('Dir contains '.numOriginalFiles.' writeable files, but there are '.numModifiedFiles.' listed in buffer.  These numbers should be equal')
-    return
-  endif
-
-  " The actual renaming process is a hard one to do reliably.  Consider a few cases:
-  " 1. a -> c
-  "    b -> c
-  "    => This should give an error, else a will be deleted.
-  " 2. a -> b
-  "    b -> c
-  "    This should be okay, but basic sequential processing would give
-  "    a -> c, and b is deleted - not at all what was asked for!
-  " 3. a -> b
-  "    b -> a
-  "    This should be okay, but basic sequential processing would give
-  "    a remains unchanged and b is deleted!!
-  " So - first check that all destination files are unique.
-  " If yes, then for all files that are changing, rename them to
-  " <fileIndex>_GOING_TO_<newName>
-  " Then finally rename them to <newName>.
-
-  " Check for duplicates
-  let sortedModifiedFileList = sort(copy(modifiedFileList))
-  let lastFile = ''
-  let duplicatesFound = []
-  for thisFile in sortedModifiedFileList
-    if thisFile == lastFile
-      let duplicatesFound += [ thisFile ]
-    end
-    let lastFile = thisFile
-  endfor
-  if len(duplicatesFound)
-    echom "Found the following duplicate files:"
-    for f in duplicatesFound
-      echom f
+  try
+    " Get the current lines
+    let splitBufferText = getline(1, '$')
+    let modifiedFileList = []
+    let lineNo = 0
+    let invalidFileCount = 0
+    for line in splitBufferText
+      let lineNo += 1
+      if line !~ '^#'
+        let line = substitute(line, s:linkPrefix.'.*','','')
+        let line = substitute(line, '\/$','','')
+        let invalidFileCount += renamer#ValidatePathfile(b:renamerDirectory, line, lineNo)
+        let modifiedFileList += [ b:renamerDirectory . '/' . line ]
+      endif
     endfor
-    call s:EchoErr("Fix the duplicates and try again")
-    return
-  endif
 
-  " Rename to unique intermediate names
-  let uniqueIntermediateNames = []
-  let i = 0
-  while i < numOriginalFiles
-    if b:renamerOriginalPathfileList[i] !=# modifiedFileList[i]
-      if filewritable(b:renamerOriginalPathfileList[i])
-        " let newName = substitute(modifiedFileList[i], escape(b:renamerDirectory.'/','/\'),'','')
-        let newName = substitute(modifiedFileList[i], b:renamerDirectoryEscaped,'','')
-        let newDir = fnamemodify(modifiedFileList[i], ':h')
-        if !isdirectory(newDir) && exists('*mkdir')
-          " Create the directory, or directories required
-          call mkdir(newDir, 'p')
-        endif
-        if !isdirectory(newDir)
-          call s:EchoErr("Attempting to rename '".b:renamerOriginalPathfileList[i]."' to '".newName."' but directory ".newDir." couldn't be created!")
-          " Continue anyway with the other files since we've already started renaming
-        else
-          " To allow moving files to other directories, slashes must be "escaped" in a special way
-          let newName = substitute(newName, '\/', '_FORWSLASH_', 'g')
-          let newName = substitute(newName, '\\', '_BACKSLASH_', 'g')
-          let uniqueIntermediateName = b:renamerDirectory.'/'.i.'_GOING_TO_'.newName
-          if rename(b:renamerOriginalPathfileList[i], uniqueIntermediateName) != 0
-            call s:EchoErr("Unable to rename '".b:renamerOriginalPathfileList[i]."' to '".uniqueIntermediateName."'")
+    if invalidFileCount
+      call s:EchoErr(invalidFileCount." name(s) had errors. Resolve and retry...")
+      return
+    endif
+
+    let numOriginalFiles = len(b:renamerOriginalPathfileList)
+    let numModifiedFiles = len(modifiedFileList)
+
+    if numModifiedFiles != numOriginalFiles
+      call s:EchoErr('Dir contains '.numOriginalFiles.' writeable files, but there are '.numModifiedFiles.' listed in buffer.  These numbers should be equal')
+      return
+    endif
+
+    " The actual renaming process is a hard one to do reliably.  Consider a few cases:
+    " 1. a -> c
+    "    b -> c
+    "    => This should give an error, else a will be deleted.
+    " 2. a -> b
+    "    b -> c
+    "    This should be okay, but basic sequential processing would give
+    "    a -> c, and b is deleted - not at all what was asked for!
+    " 3. a -> b
+    "    b -> a
+    "    This should be okay, but basic sequential processing would give
+    "    a remains unchanged and b is deleted!!
+    " So - first check that all destination files are unique.
+    " If yes, then for all files that are changing, rename them to
+    " <fileIndex>_GOING_TO_<newName>
+    " Then finally rename them to <newName>.
+
+    " Check for duplicates
+    let sortedModifiedFileList = sort(copy(modifiedFileList))
+    let lastFile = ''
+    let duplicatesFound = []
+    for thisFile in sortedModifiedFileList
+      if thisFile == lastFile
+        let duplicatesFound += [ thisFile ]
+      end
+      let lastFile = thisFile
+    endfor
+    if len(duplicatesFound)
+      echom "Found the following duplicate files:"
+      for f in duplicatesFound
+        echom f
+      endfor
+      call s:EchoErr("Fix the duplicates and try again")
+      return
+    endif
+
+    " Rename to unique intermediate names
+    let uniqueIntermediateNames = []
+    let i = 0
+    while i < numOriginalFiles
+      if b:renamerOriginalPathfileList[i] !=# modifiedFileList[i]
+        if filewritable(b:renamerOriginalPathfileList[i])
+          " let newName = substitute(modifiedFileList[i], escape(b:renamerDirectory.'/','/\'),'','')
+          let newName = substitute(modifiedFileList[i], b:renamerDirectoryEscaped,'','')
+          let newDir = fnamemodify(modifiedFileList[i], ':h')
+          if !isdirectory(newDir) && exists('*mkdir')
+            " Create the directory, or directories required
+            if a:isTest
+              echom printf('Create %s', newDir)
+            else
+              call mkdir(newDir, 'p')
+            endif
+          endif
+          if a:isTest
+            echom printf('Move   %s -> %s', b:renamerOriginalPathfileList[i], simplify(b:renamerDirectory . newName))
+            let i += 1
+            continue
+          endif
+          if !isdirectory(newDir)
+            call s:EchoErr("Attempting to rename '".b:renamerOriginalPathfileList[i]."' to '".newName."' but directory ".newDir." couldn't be created!")
             " Continue anyway with the other files since we've already started renaming
           else
-            let uniqueIntermediateNames += [ uniqueIntermediateName ]
+            " To allow moving files to other directories, slashes must be "escaped" in a special way
+            let newName = substitute(newName, '\/', '_FORWSLASH_', 'g')
+            let newName = substitute(newName, '\\', '_BACKSLASH_', 'g')
+            let uniqueIntermediateName = b:renamerDirectory.'/'.i.'_GOING_TO_'.newName
+            if rename(b:renamerOriginalPathfileList[i], uniqueIntermediateName) != 0
+              call s:EchoErr("Unable to rename '".b:renamerOriginalPathfileList[i]."' to '".uniqueIntermediateName."'")
+            " Continue anyway with the other files since we've already started renaming
+          else
+            " To allow moving files to other directories, slashes must be "escaped" in a special way
+            let newName = substitute(newName, '\/', '_FORWSLASH_', 'g')
+            let newName = substitute(newName, '\\', '_BACKSLASH_', 'g')
+            let uniqueIntermediateName = b:renamerDirectory.'/'.i.'_GOING_TO_'.newName
+            if rename(b:renamerOriginalPathfileList[i], uniqueIntermediateName) != 0
+              call s:EchoErr("Unable to rename '".b:renamerOriginalPathfileList[i]."' to '".uniqueIntermediateName."'")
+              " Continue anyway with the other files since we've already started renaming
+            else
+              let uniqueIntermediateNames += [ uniqueIntermediateName ]
+            endif
           endif
+        else
+          echom "File '".b:renamerOriginalPathfileList[i]."' is not writable and won't be changed"
         endif
-      else
-        echom "File '".b:renamerOriginalPathfileList[i]."' is not writable and won't be changed"
       endif
-    endif
-    let i += 1
-  endwhile
+      let i += 1
+    endwhile
 
-  " Do final renaming
-  for intermediateName in uniqueIntermediateNames
-    let newName = b:renamerDirectory.'/'.substitute(intermediateName, '.*_GOING_TO_', '', '')
-    let newName = substitute(newName, '_FORWSLASH_', '/', 'g')
-    let newName = substitute(newName, '_BACKSLASH_', '\', 'g')
-    if filereadable(newName)
-      call s:EchoErr("A file called '".newName."' already exists - cancelling rename!")
-      " Continue anyway with the other files since we've already started renaming
-    else
-      if rename(intermediateName, newName) != 0
-        call s:EchoErr("Unable to rename '".intermediateName."' to '".newName."'")
+    if a:isTest
+      return
+    endif
+
+    " Do final renaming
+    for intermediateName in uniqueIntermediateNames
+      let newName = b:renamerDirectory.'/'.substitute(intermediateName, '.*_GOING_TO_', '', '')
+      let newName = substitute(newName, '_FORWSLASH_', '/', 'g')
+      let newName = substitute(newName, '_BACKSLASH_', '\', 'g')
+      if filereadable(newName)
+        call s:EchoErr("A file called '".newName."' already exists - cancelling rename!")
         " Continue anyway with the other files since we've already started renaming
+      else
+        if rename(intermediateName, newName) != 0
+          call s:EchoErr("Unable to rename '".intermediateName."' to '".newName."'")
+          " Continue anyway with the other files since we've already started renaming
+        endif
       endif
-    endif
-  endfor
+    endfor
 
-  let &report=oldRep
-  let &sc = save_sc
-
-  call renamer#Start(0,savedLineNumber,b:renamerDirectory)
+    call renamer#Start(0,savedLineNumber,b:renamerDirectory)
+  finally
+    let &report=oldRep
+    let &sc = save_sc
+  endtry
 endfunction
 
 function renamer#ChangeDirectory() "{{{1

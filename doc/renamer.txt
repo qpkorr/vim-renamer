@@ -11,9 +11,9 @@ rename a bunch of files, especially when you want to do a common text
 manipulation to those file names, this plugin may help.  It shows you all
 the files in the current directory (and optionally in those below it),
 and lets you edit their names in the vim buffer.  When you're ready,
-issue the command ":Ren" to perform the mass rename.  Relative paths
-can be given, and new directories will be created, with 755 permissions,
-as required.
+issue the command |:Ren| to perform the mass rename, or check with |:RenTest|.
+Relative paths can be given, and new directories will be created, with 755
+permissions, as required.
 
 USAGE                                                   *renamer-usage* {{{1
 :Renamer {dir}                                          *:Renamer*
@@ -24,6 +24,8 @@ The VimRenamer window contains a directory listing. You can modify
 filenames and remove files.
 
 :Ren or :w (see g:RenamerSupportColonWToRename) will apply your changes.
+:RenTest will just show what will be moved (and which new directories will be
+created).
 
 Set the user configurable variables defined in plugin/renamer.vim as desired.
 
