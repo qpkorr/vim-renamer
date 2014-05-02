@@ -258,7 +258,7 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
         let fileEntryNumber += 1
       endif
     endif
-    let b:renamerMaxWidth = max([b:renamerMaxWidth, len(text)])
+    let b:renamerMaxWidth = max([b:renamerMaxWidth, (exists('*strdisplaywidth') ? strdisplaywidth(text) : len(text))])
     let i += 1
   endwhile
 
