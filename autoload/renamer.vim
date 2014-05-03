@@ -287,7 +287,6 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
 
   " Setup syntax
   if has("syntax")
-    syntax on
     exec "syn match RenamerSecondaryInstructions '^\s*".s:hashes.".*'"
     exec "syn match RenamerPrimaryInstructions   '^\s*".s:hashes."Renamer.*'"
     exec "syn match RenamerLinkInfo '".s:linkPrefix.".*'"
@@ -383,7 +382,6 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   " Restore things
   let &report=oldRep
   let &sc = save_sc
-
 endfunction
 
 function renamer#CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayText) "{{{1
