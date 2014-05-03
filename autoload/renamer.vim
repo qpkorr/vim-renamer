@@ -392,7 +392,12 @@ function renamer#CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayT
 
   if a:needNewWindow || g:RenamerOriginalFileWindowEnabled == 2
     " Create a new window to the left
-    lefta vnew
+    " 14 is the minimum reasonable, so set initial width to that
+    lefta 14vnew
+
+    " and prevent vim shrinking it
+    setlocal winwidth=14
+
     setlocal modifiable
     setlocal nonumber
     if exists('+relativenumber')
@@ -443,10 +448,7 @@ function renamer#CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayT
   endif
 
   " Set the width of the left hand window, as small as we can
-  " 14 is the minimum reasonable, so set winwidth to that
-  " to prevent vim enlarging it
-  set winwidth=14
-  let width = max([&winwidth, a:maxWidth+1])
+  let width = max([winwidth(0), a:maxWidth+1])
   " But don't use more than half the width of vim
   exec 'vertical resize '.min([&columns/2, width])
 
