@@ -435,6 +435,13 @@ function renamer#CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayT
   " Position the cursor on the same line as the main window
   call cursor(currentLine,1)
 
+  " Setup syntax
+  if has("syntax")
+    exec "syn match RenamerSecondaryInstructions '^\s*".s:hashes.".*'"
+    syn match RenamerOriginalDirectoryName       '^\s*[^#].*[/\\]$'
+    syn match RenamerOriginalFilename            '^\s*[^#].*[/\\]\@<!$'
+  endif
+
   " Set the width of the left hand window, as small as we can
   " 14 is the minimum reasonable, so set winwidth to that
   " to prevent vim enlarging it
