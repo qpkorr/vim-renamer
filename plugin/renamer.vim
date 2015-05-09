@@ -1,7 +1,7 @@
 " renamer.vim
 " Maintainer:   John Orr (john undersc0re orr yah00 c0m)
-" Version:      2.0
-" Last Change:  08 Jul 2012
+" Version:      2.1
+" Last Change:  9 May 2015
 
 " Introduction: {{{1
 " Basic Usage:
@@ -20,7 +20,7 @@ if exists("loaded_renamer")
   finish
 endif
 if v:version < 700
-  echoe "renamer.vim requires vim version 7.00 or greater (mainly because it uses the new lists functionality)"
+  echoe "renamer.vim requires vim version 7.00 or greater (mainly because it uses list functionality)"
   finish
 endif
 let loaded_renamer = 1
@@ -35,6 +35,11 @@ let loaded_renamer = 1
 " It can be toggled with <Shift-T>
 if !exists('g:RenamerOriginalFileWindowEnabled')
   let g:RenamerOriginalFileWindowEnabled = 0
+endif
+
+" g:RenamerInitialPathDepth {{{2
+if !exists('g:RenamerInitialPathDepth')
+  let g:RenamerInitialPathDepth = 1
 endif
 
 " g:RenamerShowLinkTargets {{{2
@@ -88,6 +93,7 @@ endif
 if !exists('g:RenamerHighlightForOriginalDirectoryName')
   let g:RenamerHighlightForOriginalDirectoryName = 'bold'
 endif
+
 
 
 " Commands {{{1

@@ -14,14 +14,16 @@ let s:linkPrefix = ' '.s:hashes.s:linksTo
 let s:header = [
       \ "Renamer: change names then give command :Ren\n" ,
       \ "ENTER=chdir, T=toggle original files, F5=refresh, Ctrl-Del=delete\n" ,
+      \ ">=one more level, <=one less level\n" ,
       \ "Do not change the number of files listed (unless deleting)\n"
       \ ]
 let s:headerLineCount = len(s:header) + 2 " + 2 because of extra lines added later
+let b:renamerSavedDirectoryLocations = {}
 
 if has('dos16')||has('dos32')||has('win16')||has('win32')||has('win64')||has('win32unix')||has('win95')
   " With info from http://support.grouplogic.com/?p=1607 and
   " http://en.wikipedia.org/wiki/Filename
-  let s:validChars = '[][a-zA-Z0-9`~!@#$%^&()_+={};'',. -]'
+  let s:validChars = '[-\[\]a-zA-Z0-9`~!@#$%^&()_+={};'',. \u4e00-\u9fa5]' " Multibyte from github.com/asins/renamer.vim
   let s:separator = '[\\/]'
   let s:fileIllegalPatterns =  '\v( $)|(\.$)|(.{256})|^(com[1-9]|lpt[1-9]|con|nul|prn)$'
   let s:fileIllegalPatternsGuide = [ 'a space at the end of the filename', 'a period at the end of the filename', 'more than 255 characters', 'a prohibited filename for DOS/Windows']
@@ -84,6 +86,7 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
       normal! 1GVGd
     endif
     let b:renamerSavedDirectoryLocations = {}
+    let b:renamerPathDepth = g:RenamerInitialPathDepth
   else
     " b) deleting the existing window content if renamer is already running
     normal! 1GVGd
@@ -121,10 +124,23 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
 
   " Unix and Windows need different things due to differences in possible filenames
   if has('unix')
-    let pathfiles = renamer#Path(glob(b:renamerDirectoryEscaped . "/*"))
+    let basePath = b:renamerDirectoryEscaped
   else
-    let pathfiles = renamer#Path(glob(b:renamerDirectory . "/*"))
+    let basePath = b:renamerDirectory
   endif
+
+  let globPath = basePath . "/*"
+  let pathfiles = renamer#Path(glob(globPath))
+  let i = 2
+  while i <= b:renamerPathDepth
+    let globPath = basePath . repeat("/*", i)
+    let pathfilesToAdd = renamer#Path(glob(globPath))
+    if len(pathfilesToAdd) > 0
+      let pathfiles .= "\n" . pathfilesToAdd
+    endif
+    let i += 1
+  endwhile
+
   if pathfiles != "" && pathfiles !~ "\n$"
     let pathfiles .= "\n"
   endif
@@ -165,7 +181,8 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   let b:renamerNonWriteableEntries = []
 
   let displayText  = s:hashes.join(s:header, s:hashes)   " Initialise the display text, start with the preset header
-  let displayText .= s:hashes."Current directory: " . b:renamerDirectory . "\n"
+  let displayText .= s:hashes."Currently editing: "
+  let displayText .= renamer#Path(b:renamerDirectory . repeat("/*", b:renamerPathDepth)) . "\n"
   let displayText .= "# ../\n"
 
   let directoryDisplayText = ''                      " Display text for the directory parts
@@ -264,6 +281,7 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   " Set the buffer type
   setlocal buftype=nofile
   setlocal noswapfile
+  setlocal bufhidden=delete
 
   " Set the buffer name if not already set
   if bufname('%') != 'VimRenamer'
@@ -283,7 +301,7 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
     let i = 0
     while i < len(writeableFilenames)
       " Escape some characters for use in regex's
-      let escapedFile = escape(writeableFilenames[i], '*[]\~"')
+      let escapedFile = escape(writeableFilenames[i], '*[]\~".')
       " Calculate the line number for this entry, for line-specific syntax highlighting
       let lineNumber = dirEntryNumber + writeableFilenamesEntryNums[i] + s:headerLineCount + 1 " Get the line number
       " Start the match command
@@ -334,15 +352,17 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   endif
 
   " Define command to do the rename
-  command! -buffer -bang -nargs=0 Ren :call renamer#PerformRename()
+  command! -buffer -bang -bar -nargs=0 Ren :call renamer#PerformRename()
 
   if g:RenamerSupportColonWToRename
-    " Enable :w<cr> to work as well
-    cnoremap <buffer> <CR> <C-\>eCheckUserCommand()<CR><CR>
-    function! CheckUserCommand()
+    " Enable :w<cr> and :wq<cr> to work as well
+    cnoremap <buffer> <CR> <C-\>eRenamerCheckUserCommand()<CR><CR>
+    function! RenamerCheckUserCommand()
       let cmd = getcmdline()
       if cmd == 'w'
         let cmd = 'Ren'
+      elseif cmd == 'wq'
+        let cmd = "Ren|quit"
       endif
       return cmd
     endfunction
@@ -353,6 +373,8 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   nnoremap <buffer> <silent> <C-Del> :call renamer#DeleteEntry()<CR>
   nnoremap <buffer> <silent> T :call renamer#ToggleOriginalFilesWindow()<CR>
   nnoremap <buffer> <silent> <F5> :call renamer#Refresh()<CR>
+  nnoremap <buffer> <silent> > :call renamer#ChangeLevel(1)<CR>
+  nnoremap <buffer> <silent> < :call renamer#ChangeLevel(-1)<CR>
 
   " Position the cursor
   if a:startLine > 0
@@ -453,7 +475,10 @@ function renamer#PerformRename() "{{{1
   " Prevent a report of our actions from showing up
   let oldRep=&report
   let save_sc = &sc
-  set report=10000 nosc
+  set report=100000 nosc
+
+  " Save the current line number, to return to it after renaming
+  let savedLineNumber = line('.')
 
   " Get the current lines, except the first
   let saved_z = @z
@@ -578,7 +603,7 @@ function renamer#PerformRename() "{{{1
   let &report=oldRep
   let &sc = save_sc
 
-  call renamer#Start(0,-1,b:renamerDirectory)
+  call renamer#Start(0,savedLineNumber,b:renamerDirectory)
 endfunction
 
 function renamer#ChangeDirectory() "{{{1
@@ -720,9 +745,22 @@ function renamer#ToggleOriginalFilesWindow() "{{{1
   endif
 endfunction
 
+function renamer#ChangeLevel(step) "{{{1
+  " Show more or less levels of files/dirs
+  let oldPathDepth = b:renamerPathDepth
+  let b:renamerPathDepth += a:step
+  if b:renamerPathDepth < 1
+    let b:renamerPathDepth = 1
+    echom "Already displaying minimum levels"
+  endif
+  if b:renamerPathDepth != oldPathDepth
+    call renamer#Refresh()
+  endif
+endfunction
+
 function renamer#Refresh() "{{{1
   " Update the display in case directory contents have changed outside vim
-  call renamer#Start(0,-1,b:renamerDirectory)
+  call renamer#Start(0,line('.'),b:renamerDirectory)
 endfunction
 
 " Support functions        {{{1
@@ -736,7 +774,9 @@ function renamer#Path(p)       "{{{2
   endif
   " Remove trailing slashes (note - only from end of list, not from the end of
   " lines followed by return characters within the list)
-  let returnPath=substitute(returnPath, '/*$', '', '')
+  let returnPath=substitute(returnPath, '^\(.\{-1,}\)/*$', '\1', '')
+  " Remove double slashes
+  let returnPath=substitute(returnPath, '//\+', '/', 'g')
   return returnPath
 endfunction
 
@@ -800,10 +840,13 @@ function renamer#ValidatePathfile(dir, line, lineNo) "{{{2
     " Be specific about which char(s) is/are invalid
     let invalidName = 0
     for c in split(a:line, '\zs')
-      let validChar = (match(c, s:validChars) != -1) || (match(c, s:separator) != -1)
-      if !validChar
-        echom "Invalid character '".c."' in name '".a:line."' on line ".a:lineNo
-        let invalidName = 1
+      " For now, don't check any multi-byte characters
+      if char2nr(c) < 255
+        let validChar = (match(c, s:validChars) != -1) || (match(c, s:separator) != -1)
+        if !validChar
+          echom "Invalid character '".c."' in name '".a:line."' on line ".a:lineNo." valid chars '".s:validChars."'"
+          let invalidName = 1
+        endif
       endif
     endfor
     if invalidName
