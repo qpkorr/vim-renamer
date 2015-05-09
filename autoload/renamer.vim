@@ -12,7 +12,7 @@ let s:hashes = '### '
 let s:linksTo = 'LinksTo: '
 let s:linkPrefix = ' '.s:hashes.s:linksTo
 let s:header = [
-      \ "Renamer: change names then give command :Ren\n" ,
+      \ "Renamer: change names then give command :Ren (:w or :wq if enabled)\n" ,
       \ "ENTER=chdir, T=toggle original files, F5=refresh, Ctrl-Del=delete\n" ,
       \ ">=one more level, <=one less level\n" ,
       \ "Do not change the number of files listed (unless deleting)\n"
@@ -23,7 +23,8 @@ let b:renamerSavedDirectoryLocations = {}
 if has('dos16')||has('dos32')||has('win16')||has('win32')||has('win64')||has('win32unix')||has('win95')
   " With info from http://support.grouplogic.com/?p=1607 and
   " http://en.wikipedia.org/wiki/Filename
-  let s:validChars = '[-\[\]a-zA-Z0-9`~!@#$%^&()_+={};'',. \u4e00-\u9fa5]' " Multibyte from github.com/asins/renamer.vim
+  " let s:validChars = '[-\[\]a-zA-Z0-9`~!@#$%^&()_+={};'',. ]'
+  let s:validChars = '[^<>:"/\\|?*]' " Handle non-english characters as well - be relaxed about what is allowed. Thanks dobogo.
   let s:separator = '[\\/]'
   let s:fileIllegalPatterns =  '\v( $)|(\.$)|(.{256})|^(com[1-9]|lpt[1-9]|con|nul|prn)$'
   let s:fileIllegalPatternsGuide = [ 'a space at the end of the filename', 'a period at the end of the filename', 'more than 255 characters', 'a prohibited filename for DOS/Windows']
@@ -109,10 +110,6 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
 
   " Get an escaped version of b:renamerDirectory for later common use
   let b:renamerDirectoryEscaped = escape(b:renamerDirectory, '[]`~$*\')
-
-  " Set the title, since the renamer window won't have one
-  let &titlestring='Vim Renamer ('.b:renamerDirectory.') - '.v:servername
-  set title
 
   " Get a list of all the files
   " Since glob follows 'wildignore' settings and this may well be undesirable,
