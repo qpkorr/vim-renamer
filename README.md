@@ -7,11 +7,11 @@ The repo contains the files suitable for a vim pathogen "bundle" directory (goog
 
 From renamer.txt, the help file:
 
-INTRODUCTION                                                  *renamer* {{{1
+## INTRODUCTION
 Show a list of file names in a directory, rename then in the vim buffer
 using vim editing commands, then have vim rename them on disk
 
-DESCRIPTION                                       *renamer-description* {{{1
+## DESCRIPTION
 Renaming a single file is easily done via an operating system file explorer,
 the vim file explorer (netrw.vim), or the command line.  When you want to
 rename a bunch of files, especially when you want to do a common text
@@ -22,11 +22,11 @@ issue the command ":Ren" to perform the mass rename.  Relative paths
 can be given, and new directories will be created, with 755 permissions,
 as required.
 
-USAGE                                                   *renamer-usage* {{{1
+## USAGE
 Use the Renamer command invoke the functionality and set the User
 Configurable Variables defined in plugin/renamer.vim as desired.
 
-INSTALL DETAILS                                       *renamer-install* {{{1
+## INSTALL DETAILS
 The usual pathogen setup - add renamer directory to $HOME/.vim/bundle
 directory.
 
