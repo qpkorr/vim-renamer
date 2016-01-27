@@ -550,7 +550,7 @@ function renamer#PerformRename() "{{{1
   let uniqueIntermediateNames = []
   let i = 0
   while i < numOriginalFiles
-    if b:renamerOriginalPathfileList[i] != modifiedFileList[i]
+    if b:renamerOriginalPathfileList[i] !=# modifiedFileList[i]
       if filewritable(b:renamerOriginalPathfileList[i])
         " let newName = substitute(modifiedFileList[i], escape(b:renamerDirectory.'/','/\'),'','')
         let newName = substitute(modifiedFileList[i], b:renamerDirectoryEscaped,'','')
