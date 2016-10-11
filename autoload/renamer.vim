@@ -111,6 +111,10 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   " Get an escaped version of b:renamerDirectory for later common use
   let b:renamerDirectoryEscaped = escape(b:renamerDirectory, '[]`~$*\')
 
+  " Set the title, since the renamer window won't have one
+  let &titlestring='Vim Renamer ('.b:renamerDirectory.') - '.v:servername
+  set title
+
   " Get a list of all the files
   " Since glob follows 'wildignore' settings and this may well be undesirable,
   " we may ignore such directives
@@ -572,14 +576,6 @@ function renamer#PerformRename(isTest) "{{{1
           endif
           if !isdirectory(newDir)
             call s:EchoErr("Attempting to rename '".b:renamerOriginalPathfileList[i]."' to '".newName."' but directory ".newDir." couldn't be created!")
-            " Continue anyway with the other files since we've already started renaming
-          else
-            " To allow moving files to other directories, slashes must be "escaped" in a special way
-            let newName = substitute(newName, '\/', '_FORWSLASH_', 'g')
-            let newName = substitute(newName, '\\', '_BACKSLASH_', 'g')
-            let uniqueIntermediateName = b:renamerDirectory.'/'.i.'_GOING_TO_'.newName
-            if rename(b:renamerOriginalPathfileList[i], uniqueIntermediateName) != 0
-              call s:EchoErr("Unable to rename '".b:renamerOriginalPathfileList[i]."' to '".uniqueIntermediateName."'")
             " Continue anyway with the other files since we've already started renaming
           else
             " To allow moving files to other directories, slashes must be "escaped" in a special way
