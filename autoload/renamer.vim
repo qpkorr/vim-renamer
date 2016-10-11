@@ -12,7 +12,7 @@ let s:hashes = '### '
 let s:linksTo = 'LinksTo: '
 let s:linkPrefix = ' '.s:hashes.s:linksTo
 let s:header = [
-      \ "Renamer: change names then give command :Ren (:w or :wq if enabled)\n" ,
+      \ "Renamer: change names then give command :Ren" . (g:RenamerSupportColonWToRename ? " (or :w)" : '') . "\n" ,
       \ "ENTER=chdir, T=toggle original files, F5=refresh, Ctrl-Del=delete\n" ,
       \ ">=one more level, <=one less level\n" ,
       \ "Do not change the number of files listed (unless deleting)\n"
@@ -84,13 +84,13 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
     if bufname('') != '' || &mod
       new
     else
-      normal! 1GVGd
+      silent %delete _
     endif
     let b:renamerSavedDirectoryLocations = {}
     let b:renamerPathDepth = g:RenamerInitialPathDepth
   else
     " b) deleting the existing window content if renamer is already running
-    normal! 1GVGd
+    silent %delete _
   endif
 
   if g:RenamerOriginalFileWindowEnabled
@@ -258,7 +258,7 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
         let fileEntryNumber += 1
       endif
     endif
-    let b:renamerMaxWidth = max([b:renamerMaxWidth, len(text)])
+    let b:renamerMaxWidth = max([b:renamerMaxWidth, (exists('*strdisplaywidth') ? strdisplaywidth(text) : len(text))])
     let i += 1
   endwhile
 
@@ -273,7 +273,7 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
     put =b:renamerEntryDisplayText
   endif
   " Remove a blank line created by 'put'
-  normal! ggdd
+  1delete _
 
   " Set the buffer type
   setlocal buftype=nofile
@@ -287,7 +287,6 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
 
   " Setup syntax
   if has("syntax")
-    syntax on
     exec "syn match RenamerSecondaryInstructions '^\s*".s:hashes.".*'"
     exec "syn match RenamerPrimaryInstructions   '^\s*".s:hashes."Renamer.*'"
     exec "syn match RenamerLinkInfo '".s:linkPrefix.".*'"
@@ -331,25 +330,19 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
       let i += 1
     endwhile
 
-    " Link the highlights to user-setable colours
-    exec "highlight link RenamerPrimaryInstructions " . g:RenamerHighlightForPrimaryInstructions
-    exec "highlight link RenamerSecondaryInstructions " . g:RenamerHighlightForSecondaryInstructions
-    exec "highlight link RenamerLinkInfo " . g:RenamerHighlightForLinkInfo
-    exec "highlight link RenamerModifiedFilename " . g:RenamerHighlightForModifiedFilename
-    exec "highlight link RenamerOriginalFilename " . g:RenamerHighlightForOriginalFilename
-    exec "highlight link RenamerNonwriteableEntries " . g:RenamerHighlightForNonWriteableEntries
-    " Make directories a bold version of files if set to 'bold'
-    if g:RenamerHighlightForOriginalDirectoryName == 'bold'
-      let originalFilenameHighlightString = renamer#GetHighlightString(g:RenamerHighlightForOriginalFilename)
-      let originalDirectoryNameHighlightString = renamer#AddBoldToHighlightGroupDefinition(originalFilenameHighlightString)
-      exec "highlight RenamerOriginalDirectoryName " . originalDirectoryNameHighlightString
-    else
-      exec "highlight link RenamerOriginalDirectoryName " . g:RenamerHighlightForOriginalDirectoryName
-    endif
+    " Presets for the highlights
+    highlight def link RenamerPrimaryInstructions Title
+    highlight def link RenamerSecondaryInstructions Comment
+    highlight def link RenamerLinkInfo PreProc
+    highlight def link RenamerModifiedFilename Statement
+    highlight def link RenamerOriginalFilename Normal
+    highlight def link RenamerNonwriteableEntries NonText
+    highlight def link RenamerOriginalDirectoryName Directory
   endif
 
   " Define command to do the rename
-  command! -buffer -bang -bar -nargs=0 Ren :call renamer#PerformRename()
+  command! -buffer -bang -bar -nargs=0 Ren     call renamer#PerformRename(0)
+  command! -buffer -bang -nargs=0      RenTest call renamer#PerformRename(1)
 
   if g:RenamerSupportColonWToRename
     " Enable :w<cr> and :wq<cr> to work as well
@@ -389,7 +382,6 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   " Restore things
   let &report=oldRep
   let &sc = save_sc
-
 endfunction
 
 function renamer#CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayText) "{{{1
@@ -398,8 +390,18 @@ function renamer#CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayT
 
   if a:needNewWindow || g:RenamerOriginalFileWindowEnabled == 2
     " Create a new window to the left
-    lefta vnew
+    " 14 is the minimum reasonable, so set initial width to that
+    lefta 14vnew
+
+    " and prevent vim shrinking it
+    setlocal winwidth=14
+
     setlocal modifiable
+    setlocal nonumber
+    if exists('+relativenumber')
+      setlocal norelativenumber
+    endif
+    setlocal foldcolumn=0
 
     " Set the header text
     let headerText = [ s:hashes.'ORIGINAL' ,
@@ -436,11 +438,15 @@ function renamer#CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayT
   " Position the cursor on the same line as the main window
   call cursor(currentLine,1)
 
+  " Setup syntax
+  if has("syntax")
+    exec "syn match RenamerSecondaryInstructions '^\s*".s:hashes.".*'"
+    syn match RenamerOriginalDirectoryName       '^\s*[^#].*[/\\]$'
+    syn match RenamerOriginalFilename            '^\s*[^#].*[/\\]\@<!$'
+  endif
+
   " Set the width of the left hand window, as small as we can
-  " 14 is the minimum reasonable, so set winwidth to that
-  " to prevent vim enlarging it
-  set winwidth=14
-  let width = max([&winwidth, a:maxWidth+1])
+  let width = max([winwidth(0), a:maxWidth+1])
   " But don't use more than half the width of vim
   exec 'vertical resize '.min([&columns/2, width])
 
@@ -466,7 +472,7 @@ function renamer#CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayT
   let g:RenamerOriginalFileWindowEnabled = 1
 endfunction
 
-function renamer#PerformRename() "{{{1
+function renamer#PerformRename(isTest) "{{{1
   " The function to do the renaming
 
   " Prevent a report of our actions from showing up
@@ -477,130 +483,148 @@ function renamer#PerformRename() "{{{1
   " Save the current line number, to return to it after renaming
   let savedLineNumber = line('.')
 
-  " Get the current lines, except the first
-  let saved_z = @z
-  normal! 1GVG"zy
-  let bufferText = @z
-  let @z = saved_z
-
-  let splitBufferText = split(bufferText, "\n")
-  let modifiedFileList = []
-  let lineNo = 0
-  let invalidFileCount = 0
-  for line in splitBufferText
-    let lineNo += 1
-    if line !~ '^#'
-      let line = substitute(line, s:linkPrefix.'.*','','')
-      let line = substitute(line, '\/$','','')
-      let invalidFileCount += renamer#ValidatePathfile(b:renamerDirectory, line, lineNo)
-      let modifiedFileList += [ b:renamerDirectory . '/' . line ]
-    endif
-  endfor
-
-  if invalidFileCount
-    echoe invalidFileCount." name(s) had errors. Resolve and retry..."
-    return
-  endif
-
-  let numOriginalFiles = len(b:renamerOriginalPathfileList)
-  let numModifiedFiles = len(modifiedFileList)
-
-  if numModifiedFiles != numOriginalFiles
-    echoe 'Dir contains '.numOriginalFiles.' writeable files, but there are '.numModifiedFiles.' listed in buffer.  These numbers should be equal'
-    return
-  endif
-
-  " The actual renaming process is a hard one to do reliably.  Consider a few cases:
-  " 1. a -> c
-  "    b -> c
-  "    => This should give an error, else a will be deleted.
-  " 2. a -> b
-  "    b -> c
-  "    This should be okay, but basic sequential processing would give
-  "    a -> c, and b is deleted - not at all what was asked for!
-  " 3. a -> b
-  "    b -> a
-  "    This should be okay, but basic sequential processing would give
-  "    a remains unchanged and b is deleted!!
-  " So - first check that all destination files are unique.
-  " If yes, then for all files that are changing, rename them to
-  " <fileIndex>_GOING_TO_<newName>
-  " Then finally rename them to <newName>.
-
-  " Check for duplicates
-  let sortedModifiedFileList = sort(copy(modifiedFileList))
-  let lastFile = ''
-  let duplicatesFound = []
-  for thisFile in sortedModifiedFileList
-    if thisFile == lastFile
-      let duplicatesFound += [ thisFile ]
-    end
-    let lastFile = thisFile
-  endfor
-  if len(duplicatesFound)
-    echom "Found the following duplicate files:"
-    for f in duplicatesFound
-      echom f
+  try
+    " Get the current lines
+    let splitBufferText = getline(1, '$')
+    let modifiedFileList = []
+    let lineNo = 0
+    let invalidFileCount = 0
+    for line in splitBufferText
+      let lineNo += 1
+      if line !~ '^#'
+        let line = substitute(line, s:linkPrefix.'.*','','')
+        let line = substitute(line, '\/$','','')
+        let invalidFileCount += renamer#ValidatePathfile(b:renamerDirectory, line, lineNo)
+        let modifiedFileList += [ b:renamerDirectory . '/' . line ]
+      endif
     endfor
-    echoe "Fix the duplicates and try again"
-    return
-  endif
 
-  " Rename to unique intermediate names
-  let uniqueIntermediateNames = []
-  let i = 0
-  while i < numOriginalFiles
-    if b:renamerOriginalPathfileList[i] !=# modifiedFileList[i]
-      if filewritable(b:renamerOriginalPathfileList[i])
-        " let newName = substitute(modifiedFileList[i], escape(b:renamerDirectory.'/','/\'),'','')
-        let newName = substitute(modifiedFileList[i], b:renamerDirectoryEscaped,'','')
-        let newDir = fnamemodify(modifiedFileList[i], ':h')
-        if !isdirectory(newDir) && exists('*mkdir')
-          " Create the directory, or directories required
-          call mkdir(newDir, 'p')
-        endif
-        if !isdirectory(newDir)
-          echoe "Attempting to rename '".b:renamerOriginalPathfileList[i]."' to '".newName."' but directory ".newDir." couldn't be created!"
-          " Continue anyway with the other files since we've already started renaming
-        else
-          " To allow moving files to other directories, slashes must be "escaped" in a special way
-          let newName = substitute(newName, '\/', '_FORWSLASH_', 'g')
-          let newName = substitute(newName, '\\', '_BACKSLASH_', 'g')
-          let uniqueIntermediateName = b:renamerDirectory.'/'.i.'_GOING_TO_'.newName
-          if rename(b:renamerOriginalPathfileList[i], uniqueIntermediateName) != 0
-            echoe "Unable to rename '".b:renamerOriginalPathfileList[i]."' to '".uniqueIntermediateName."'"
+    if invalidFileCount
+      call s:EchoErr(invalidFileCount." name(s) had errors. Resolve and retry...")
+      return
+    endif
+
+    let numOriginalFiles = len(b:renamerOriginalPathfileList)
+    let numModifiedFiles = len(modifiedFileList)
+
+    if numModifiedFiles != numOriginalFiles
+      call s:EchoErr('Dir contains '.numOriginalFiles.' writeable files, but there are '.numModifiedFiles.' listed in buffer.  These numbers should be equal')
+      return
+    endif
+
+    " The actual renaming process is a hard one to do reliably.  Consider a few cases:
+    " 1. a -> c
+    "    b -> c
+    "    => This should give an error, else a will be deleted.
+    " 2. a -> b
+    "    b -> c
+    "    This should be okay, but basic sequential processing would give
+    "    a -> c, and b is deleted - not at all what was asked for!
+    " 3. a -> b
+    "    b -> a
+    "    This should be okay, but basic sequential processing would give
+    "    a remains unchanged and b is deleted!!
+    " So - first check that all destination files are unique.
+    " If yes, then for all files that are changing, rename them to
+    " <fileIndex>_GOING_TO_<newName>
+    " Then finally rename them to <newName>.
+
+    " Check for duplicates
+    let sortedModifiedFileList = sort(copy(modifiedFileList))
+    let lastFile = ''
+    let duplicatesFound = []
+    for thisFile in sortedModifiedFileList
+      if thisFile == lastFile
+        let duplicatesFound += [ thisFile ]
+      end
+      let lastFile = thisFile
+    endfor
+    if len(duplicatesFound)
+      echom "Found the following duplicate files:"
+      for f in duplicatesFound
+        echom f
+      endfor
+      call s:EchoErr("Fix the duplicates and try again")
+      return
+    endif
+
+    " Rename to unique intermediate names
+    let uniqueIntermediateNames = []
+    let i = 0
+    while i < numOriginalFiles
+      if b:renamerOriginalPathfileList[i] !=# modifiedFileList[i]
+        if filewritable(b:renamerOriginalPathfileList[i])
+          " let newName = substitute(modifiedFileList[i], escape(b:renamerDirectory.'/','/\'),'','')
+          let newName = substitute(modifiedFileList[i], b:renamerDirectoryEscaped,'','')
+          let newDir = fnamemodify(modifiedFileList[i], ':h')
+          if !isdirectory(newDir) && exists('*mkdir')
+            " Create the directory, or directories required
+            if a:isTest
+              echom printf('Create %s', newDir)
+            else
+              call mkdir(newDir, 'p')
+            endif
+          endif
+          if a:isTest
+            echom printf('Move   %s -> %s', b:renamerOriginalPathfileList[i], simplify(b:renamerDirectory . newName))
+            let i += 1
+            continue
+          endif
+          if !isdirectory(newDir)
+            call s:EchoErr("Attempting to rename '".b:renamerOriginalPathfileList[i]."' to '".newName."' but directory ".newDir." couldn't be created!")
             " Continue anyway with the other files since we've already started renaming
           else
-            let uniqueIntermediateNames += [ uniqueIntermediateName ]
+            " To allow moving files to other directories, slashes must be "escaped" in a special way
+            let newName = substitute(newName, '\/', '_FORWSLASH_', 'g')
+            let newName = substitute(newName, '\\', '_BACKSLASH_', 'g')
+            let uniqueIntermediateName = b:renamerDirectory.'/'.i.'_GOING_TO_'.newName
+            if rename(b:renamerOriginalPathfileList[i], uniqueIntermediateName) != 0
+              call s:EchoErr("Unable to rename '".b:renamerOriginalPathfileList[i]."' to '".uniqueIntermediateName."'")
+            " Continue anyway with the other files since we've already started renaming
+          else
+            " To allow moving files to other directories, slashes must be "escaped" in a special way
+            let newName = substitute(newName, '\/', '_FORWSLASH_', 'g')
+            let newName = substitute(newName, '\\', '_BACKSLASH_', 'g')
+            let uniqueIntermediateName = b:renamerDirectory.'/'.i.'_GOING_TO_'.newName
+            if rename(b:renamerOriginalPathfileList[i], uniqueIntermediateName) != 0
+              call s:EchoErr("Unable to rename '".b:renamerOriginalPathfileList[i]."' to '".uniqueIntermediateName."'")
+              " Continue anyway with the other files since we've already started renaming
+            else
+              let uniqueIntermediateNames += [ uniqueIntermediateName ]
+            endif
           endif
+        else
+          echom "File '".b:renamerOriginalPathfileList[i]."' is not writable and won't be changed"
         endif
-      else
-        echom "File '".b:renamerOriginalPathfileList[i]."' is not writable and won't be changed"
       endif
-    endif
-    let i += 1
-  endwhile
+      let i += 1
+    endwhile
 
-  " Do final renaming
-  for intermediateName in uniqueIntermediateNames
-    let newName = b:renamerDirectory.'/'.substitute(intermediateName, '.*_GOING_TO_', '', '')
-    let newName = substitute(newName, '_FORWSLASH_', '/', 'g')
-    let newName = substitute(newName, '_BACKSLASH_', '\', 'g')
-    if filereadable(newName)
-      echoe "A file called '".newName."' already exists - cancelling rename!"
-      " Continue anyway with the other files since we've already started renaming
-    else
-      if rename(intermediateName, newName) != 0
-        echoe "Unable to rename '".intermediateName."' to '".newName."'"
+    if a:isTest
+      return
+    endif
+
+    " Do final renaming
+    for intermediateName in uniqueIntermediateNames
+      let newName = b:renamerDirectory.'/'.substitute(intermediateName, '.*_GOING_TO_', '', '')
+      let newName = substitute(newName, '_FORWSLASH_', '/', 'g')
+      let newName = substitute(newName, '_BACKSLASH_', '\', 'g')
+      if filereadable(newName)
+        call s:EchoErr("A file called '".newName."' already exists - cancelling rename!")
         " Continue anyway with the other files since we've already started renaming
+      else
+        if rename(intermediateName, newName) != 0
+          call s:EchoErr("Unable to rename '".intermediateName."' to '".newName."'")
+          " Continue anyway with the other files since we've already started renaming
+        endif
       endif
-    endif
-  endfor
+    endfor
 
-  let &report=oldRep
-  let &sc = save_sc
-
-  call renamer#Start(0,savedLineNumber,b:renamerDirectory)
+    call renamer#Start(0,savedLineNumber,b:renamerDirectory)
+  finally
+    let &report=oldRep
+    let &sc = save_sc
+  endtry
 endfunction
 
 function renamer#ChangeDirectory() "{{{1
@@ -641,7 +665,7 @@ function renamer#ChangeDirectory() "{{{1
   " We must also change the current directory, else it can happen
   " that we are trying to rename the directory we're currently in,
   " which is never going to work
-  exec 'cd "'.b:renamerDirectory . '"'
+  exec 'cd' fnameescape(b:renamerDirectory)
 
   " Now update the display for the new directory
   call renamer#Start(0,lineForNewBuffer,b:renamerDirectory)
@@ -681,7 +705,7 @@ function renamer#DeleteEntry() "{{{1
       let i += 1
     endwhile
     if listIndex == -1
-      echoe "Renamer: DeleteEntry couldn't find entry '".entry."'"
+      call s:EchoErr("Renamer: DeleteEntry couldn't find entry '".entry."'")
       return
     endif
   endif
@@ -710,7 +734,7 @@ function renamer#DeleteEntry() "{{{1
         let errcode = delete(entryPath)
         if errcode != 0
           " Failed - error message
-          echoe "Unable to delete directory '".entryPath."' - this script is limited to only delete empty directories"
+          call s:EchoErr("Unable to delete directory '".entryPath."' - this script is limited to only delete empty directories")
           return
         endif
       endif
@@ -719,7 +743,7 @@ function renamer#DeleteEntry() "{{{1
       let errcode = delete(entryPath)
       if errcode != 0
         " Failed - error message
-        echoe "Unable to delete file '".entryPath."'"
+        call s:EchoErr("Unable to delete file '".entryPath."'")
         return
       endif
     endif
@@ -762,6 +786,13 @@ endfunction
 
 " Support functions        {{{1
 
+function s:EchoErr( msg ) "{{{2
+  let v:errmsg = a:msg
+  echohl ErrorMsg
+  echomsg v:errmsg
+  echohl None
+endfunction
+
 function renamer#Path(p)       "{{{2
   " Make sure a path has proper form
   if has("dos16") || has("dos32") || has("win16") || has("win32") || has("os2")
@@ -776,52 +807,6 @@ function renamer#Path(p)       "{{{2
   let returnPath=substitute(returnPath, '//\+', '/', 'g')
   return returnPath
 endfunction
-
-function renamer#GetHighlightString(group) "{{{2
-  " Given a named highlight group, return the string representing the settings for it
-  if !hlexists(a:group)
-    echoe "Error in GetHighlightString: no highlight group exists called " . a:group
-    return ''
-  endif
-
-  let hlid = hlID(a:group)
-  let synid = synIDtrans(hlid)
-  let result = ''
-  for mode in ['term', 'cterm', 'gui']
-    for what in ['fg', 'bg']
-      let attr = synIDattr(synid, what, mode)
-      if attr != '' && attr != -1
-        let result .= ' ' . mode . what . '=' . attr
-      endif
-    endfor
-    for what in ['bold', 'italic', 'reverse', 'inverse', 'underline', 'undercurl']
-      let attr = synIDattr(synid, what, mode)
-      if attr == 1
-        " Don't bother supporting multiple options, like term=bold,underline
-        let result .= ' ' . mode . '=' . what
-      endif
-    endfor
-  endfor
-  return result
-endfunction
-
-function renamer#AddBoldToHighlightGroupDefinition(string) "{{{2
-  " Function to add the keyword "bold" where appropriate to a highlight definition string
-  let string = a:string
-  let string .= ' gui=bold'
-  if string =~ '\<term=' && string !~ '\<term=bold'
-    let string = substitute(string, '\<term=', 'term=bold,', '')
-  else
-    let string .= ' term=bold'
-  endif
-  if string =~ '\<cterm=' && string !~ '\<cterm=bold'
-    let string = substitute(string, '\<cterm=', 'cterm=bold,', '')
-  else
-    let string .= ' cterm=bold'
-  endif
-  return string
-endfunction
-
 
 function renamer#ValidatePathfile(dir, line, lineNo) "{{{2
   " Validate characters provided
