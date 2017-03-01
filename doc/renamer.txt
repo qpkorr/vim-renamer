@@ -38,7 +38,16 @@ INSTALL DETAILS                                       *renamer-install* {{{1
 The usual pathogen setup - add renamer directory to $HOME/.vim/bundle
 directory.
 
-INSTALLING TO WINDOWS XP/7 RIGHT CLICK MENU       *renamer-win-right-click*
+INSTALLING TO WINDOWS XP/7/8 RIGHT CLICK MENU       *renamer-win-right-click*
+You may use the included batch script "AddVimRenamerToContextMenu.bat"
+to automatically add context menu entries. This script adds context menu
+entries for folders AND FILES. The result is the same for both: open
+vim-renamer with the target folder. I just added this for convenience.
+You may delete the "add it for all file types" section, if you don't like
+this. Plus feel free to modify the menuEntry string.
+
+For reference: this is the old manual guide:
+
 To add running this script on a directory as a right click menu option,
 in Windows XP or 7, if you are confident working with the registry, do as
 follows (NOTE - THESE INSTRUCTIONS CAME FROM THE WEB AND WORKED FOR
