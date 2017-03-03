@@ -105,6 +105,8 @@ CHANGELOG                                         *renamer-changelog*   {{{1
     - fix bug when launching from within an existing buffer.
 2.0 - convert plugin to be somewhat autoloaded, and supported as a 'bundle'
 2.1 - Fix support for :wq to rename and exit.
+2.2 - Add batch file to install Windows context menu when right-clicking on
+      files, not just directories - contributed by Snaptags on github
 
 
 Modelines: {{{1
