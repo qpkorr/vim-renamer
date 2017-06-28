@@ -1,5 +1,5 @@
 @echo off
-SET exePath=c:\Program Files (x86)\Vim\vim80\gvim.exe
+SET exePath=C:\bin\vim\patched\vim\vim80\gvim.exe
 SET menuEntry=Rename with VimRenamer
 
 rem add it for all file types
