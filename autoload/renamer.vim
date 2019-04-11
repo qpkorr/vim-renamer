@@ -350,7 +350,7 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   command! -buffer -bang -bar -nargs=0 Ren     call renamer#PerformRename(0)
   command! -buffer -bang -nargs=0      RenTest call renamer#PerformRename(1)
 
-  if g:RenamerSupportColonWToRename
+  " if g:RenamerSupportColonWToRename
     " Enable :w<cr> and :wq<cr> to work as well
     cnoremap <buffer> <CR> <C-\>eRenamerCheckUserCommand()<CR><CR>
     function! RenamerCheckUserCommand()
@@ -362,7 +362,7 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
       endif
       return cmd
     endfunction
-  endif
+  " endif
 
   " Define the mapping to change directories
   nnoremap <buffer> <silent> <CR> :call renamer#ChangeDirectory()<CR>
