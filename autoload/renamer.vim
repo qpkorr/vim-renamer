@@ -128,6 +128,8 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
     let basePath = b:renamerDirectoryEscaped
   else
     let basePath = b:renamerDirectory
+    "Fix "[]"  in windows dirname globPath not Escaped
+    let basePath = substitute(basePath ,'[','[[]',"g")
   endif
 
   let globPath = basePath . "/*"
