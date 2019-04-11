@@ -355,7 +355,7 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
     cnoremap <buffer> <CR> <C-\>eRenamerCheckUserCommand()<CR><CR>
     function! RenamerCheckUserCommand()
       let cmd = getcmdline()
-      if cmd == 'w'
+      if cmd =~# '\v<(up[!]?$)|(w[!]?$)'
         let cmd = 'Ren'
       elseif cmd == 'wq'
         let cmd = "Ren|quit"
