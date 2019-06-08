@@ -145,7 +145,6 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
     let globPaths += newPaths
     let i += 1
   endwhile
-  echo globPaths
 
   let pathfiles = ''
   for globPath in globPaths
