@@ -132,17 +132,28 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
     let basePath = substitute(basePath ,'[','[[]',"g")
   endif
 
-  let globPath = basePath . "/*"
-  let pathfiles = renamer#Path(glob(globPath))
-  let i = 2
+  let globPaths = [ ]
+  let lastPaths = [ basePath ]
+  let i = 1
   while i <= b:renamerPathDepth
-    let globPath = basePath . repeat("/*", i)
+    let newPaths = []
+    for path in lastPaths
+      let newPaths += [ path . '/.[^.]*' ]
+      let newPaths += [ path . '/*']
+    endfor
+    let lastPaths = copy(newPaths)
+    let globPaths += newPaths
+    let i += 1
+  endwhile
+  echo globPaths
+
+  let pathfiles = ''
+  for globPath in globPaths
     let pathfilesToAdd = renamer#Path(glob(globPath))
     if len(pathfilesToAdd) > 0
       let pathfiles .= "\n" . pathfilesToAdd
     endif
-    let i += 1
-  endwhile
+  endfor
 
   if pathfiles != "" && pathfiles !~ "\n$"
     let pathfiles .= "\n"
