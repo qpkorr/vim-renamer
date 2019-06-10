@@ -14,7 +14,7 @@ let s:linkPrefix = ' '.s:hashes.s:linksTo
 let s:header = [
       \ "Renamer: change names then give command :Ren" . (g:RenamerSupportColonWToRename ? " (or :w)" : '') . "\n" ,
       \ "ENTER=chdir, T=toggle original files, F5=refresh, Ctrl-Del=delete\n" ,
-      \ ">=one more level, <=one less level\n" ,
+      \ ">=one more level, <=one less level, Ctrl-T=toggle hidden (dot) files\n" ,
       \ "Do not change the number of files listed (unless deleting)\n"
       \ ]
 let s:headerLineCount = len(s:header) + 2 " + 2 because of extra lines added later
@@ -78,6 +78,14 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   let save_sc = &sc
   set report=10000 nosc
 
+  if !exists('b:RenamerShowHiddenEnabled')
+    if exists('g:RenamerShowHidden') && g:RenamerShowHidden
+      let b:RenamerShowHiddenEnabled = 1
+    else
+      let b:RenamerShowHiddenEnabled = 0
+    endif
+  endif
+
   " Get a blank window, either by
   if a:needNewWindow && !exists('b:renamerDirectory')
     " a) creating a window if non exists, or
@@ -138,7 +146,9 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   while i <= b:renamerPathDepth
     let newPaths = []
     for path in lastPaths
-      let newPaths += [ path . '/.[^.]*' ]
+      if b:RenamerShowHiddenEnabled
+        let newPaths += [ path . '/.[^.]*' ]
+      endif
       let newPaths += [ path . '/*']
     endfor
     let lastPaths = copy(newPaths)
@@ -146,17 +156,17 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
     let i += 1
   endwhile
 
-  let pathfiles = ''
+  let pathfilelist = []
   for globPath in globPaths
-    let pathfilesToAdd = renamer#Path(glob(globPath))
-    if len(pathfilesToAdd) > 0
-      let pathfiles .= "\n" . pathfilesToAdd
-    endif
+    for path in split(glob(globPath), "\n")
+      let pathfilelist += [ renamer#Path(path) ]
+    endfor
   endfor
 
-  if pathfiles != "" && pathfiles !~ "\n$"
-    let pathfiles .= "\n"
-  endif
+  " if pathfiles != "" && pathfiles !~ "\n$"
+  "   let pathfiles .= "\n"
+  " endif
+  let pathfiles = join(pathfilelist, "\n") . "\n"
 
   " Restore Wildignore settings
   if g:RenamerWildIgnoreSetting != 'VIM_WILDIGNORE_SETTING'
@@ -378,6 +388,7 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   nnoremap <buffer> <silent> <CR> :call renamer#ChangeDirectory()<CR>
   nnoremap <buffer> <silent> <C-Del> :call renamer#DeleteEntry()<CR>
   nnoremap <buffer> <silent> T :call renamer#ToggleOriginalFilesWindow()<CR>
+  nnoremap <buffer> <silent> <C-T> :call renamer#ToggleShowHidden()<CR>
   nnoremap <buffer> <silent> <F5> :call renamer#Refresh()<CR>
   nnoremap <buffer> <silent> > :call renamer#ChangeLevel(1)<CR>
   nnoremap <buffer> <silent> < :call renamer#ChangeLevel(-1)<CR>
@@ -638,9 +649,11 @@ endfunction
 function renamer#ChangeDirectory() "{{{1
   let line = getline('.')
   exec "let isLinkedDir = line =~ '" . s:linksTo . ".*\/$'"
+
+  let renamerDirectoryEscapedQuote = substitute(b:renamerDirectory, "'", "QQUUOOTTEE", 'g')
   if isLinkedDir
     " Save the line for the directory being left
-    exec "let b:renamerSavedDirectoryLocations['".b:renamerDirectory."'] = ".line('.')
+    exec "let b:renamerSavedDirectoryLocations['".renamerDirectoryEscapedQuote."'] = ".line('.')
 
     " Get link destination in the case of linked dirs
     let b:renamerDirectory = simplify(substitute(line, '.*'.s:linkPrefix, '', ''))
@@ -652,7 +665,7 @@ function renamer#ChangeDirectory() "{{{1
       return
     else
       " Save the line for the directory being left
-      exec "let b:renamerSavedDirectoryLocations['".b:renamerDirectory."'] = ".line('.')
+      exec "let b:renamerSavedDirectoryLocations['".renamerDirectoryEscapedQuote."'] = ".line('.')
       if line =~ '^#'
         let b:renamerDirectory = simplify(b:renamerDirectory.'/'.substitute(line, '^#\{1,} *', '', ''))
       else
@@ -663,11 +676,12 @@ function renamer#ChangeDirectory() "{{{1
 
   " Tidy up the path (remove trailing slashes etc)
   let b:renamerDirectory = renamer#Path(b:renamerDirectory)
+  let renamerDirectoryEscapedQuote = substitute(b:renamerDirectory, "'", "QQUUOOTTEE", 'g')
 
   let lineForNewBuffer = -1
-  if exists("b:renamerSavedDirectoryLocations['".b:renamerDirectory."']")
-    let lineForNewBuffer = b:renamerSavedDirectoryLocations[b:renamerDirectory]
-    unlet b:renamerSavedDirectoryLocations[b:renamerDirectory]
+  if exists("b:renamerSavedDirectoryLocations['".renamerDirectoryEscapedQuote."']")
+    let lineForNewBuffer = b:renamerSavedDirectoryLocations[renamerDirectoryEscapedQuote]
+    unlet b:renamerSavedDirectoryLocations[renamerDirectoryEscapedQuote]
   endif
 
   " We must also change the current directory, else it can happen
@@ -772,6 +786,16 @@ function renamer#ToggleOriginalFilesWindow() "{{{1
     bdelete
     let g:RenamerOriginalFileWindowEnabled = 0
   endif
+endfunction
+
+function renamer#ToggleShowHidden() "{{{1
+  " Toggle whether to show hidden (dot) files/directories
+  if b:RenamerShowHiddenEnabled == 0
+    let b:RenamerShowHiddenEnabled = 1
+  else
+    let b:RenamerShowHiddenEnabled = 0
+  endif
+  call renamer#Refresh()
 endfunction
 
 function renamer#ChangeLevel(step) "{{{1
