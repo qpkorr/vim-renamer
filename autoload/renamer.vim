@@ -158,7 +158,7 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
 
   let pathfilelist = []
   for globPath in globPaths
-    for path in split(glob(globPath), "\n")
+    for path in glob(globPath, 0, 1, 1)  " Include all symlinks, even those that don't point to an existing file
       let pathfilelist += [ renamer#Path(path) ]
     endfor
   endfor
@@ -486,7 +486,7 @@ function renamer#CreateOriginalFileWindow(needNewWindow, maxWidth, entryDisplayT
       " In case user is changing the gui size via a startup command, delay the
       " resize as long as possible, until &columns will hopeuflly have its
       " final value
-      exec 'autocmd VIMEnter <buffer> exec "vertical resize ".min([&columns/2, '.width.'])|wincmd l|cursor('.currentLine.',1)'
+      exec 'autocmd VIMEnter <buffer> exec "vertical resize ".min([&columns/2, '.width.'])|wincmd l|call cursor('.currentLine.',1)'
       " exec 'autocmd CursorHold <buffer> exec "vertical resize ".min([&columns/2, '.width.'])|wincmd l'
     augroup END
   else
