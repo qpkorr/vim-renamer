@@ -78,11 +78,11 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   let save_sc = &sc
   set report=10000 nosc
 
-  if !exists('b:RenamerShowHiddenEnabled')
+  if !exists('s:RenamerShowHiddenEnabled')
     if exists('g:RenamerShowHidden') && g:RenamerShowHidden
-      let b:RenamerShowHiddenEnabled = 1
+      let s:RenamerShowHiddenEnabled = 1
     else
-      let b:RenamerShowHiddenEnabled = 0
+      let s:RenamerShowHiddenEnabled = 0
     endif
   endif
 
@@ -146,7 +146,7 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   while i <= b:renamerPathDepth
     let newPaths = []
     for path in lastPaths
-      if b:RenamerShowHiddenEnabled
+      if s:RenamerShowHiddenEnabled
         let newPaths += [ path . '/.[^.]*' ]
       endif
       let newPaths += [ path . '/*']
@@ -790,10 +790,10 @@ endfunction
 
 function renamer#ToggleShowHidden() "{{{1
   " Toggle whether to show hidden (dot) files/directories
-  if b:RenamerShowHiddenEnabled == 0
-    let b:RenamerShowHiddenEnabled = 1
+  if s:RenamerShowHiddenEnabled == 0
+    let s:RenamerShowHiddenEnabled = 1
   else
-    let b:RenamerShowHiddenEnabled = 0
+    let s:RenamerShowHiddenEnabled = 0
   endif
   call renamer#Refresh()
 endfunction
