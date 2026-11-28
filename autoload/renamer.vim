@@ -78,14 +78,6 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   let save_sc = &sc
   set report=10000 nosc
 
-  if !exists('b:RenamerShowHiddenEnabled')
-    if exists('g:RenamerShowHidden') && g:RenamerShowHidden
-      let b:RenamerShowHiddenEnabled = 1
-    else
-      let b:RenamerShowHiddenEnabled = 0
-    endif
-  endif
-
   " Get a blank window, either by
   if a:needNewWindow && !exists('b:renamerDirectory')
     " a) creating a window if non exists, or
@@ -99,6 +91,14 @@ function renamer#Start(needNewWindow, startLine, startDirectory) "{{{1
   else
     " b) deleting the existing window content if renamer is already running
     silent %delete _
+  endif
+
+  if !exists('b:RenamerShowHiddenEnabled')
+    if exists('g:RenamerShowHidden') && g:RenamerShowHidden
+      let b:RenamerShowHiddenEnabled = 1
+    else
+      let b:RenamerShowHiddenEnabled = 0
+    endif
   endif
 
   if g:RenamerOriginalFileWindowEnabled
